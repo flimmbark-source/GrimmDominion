@@ -16,6 +16,47 @@ import {
     SCOUT_STATS
 } from './constants.js';
 
+const DEFAULT_ENCOUNTER_PHASES = [
+    {
+        id: 'calm_watch',
+        name: 'Calm Watch',
+        duration: 90,
+        spawnCount: 1,
+        accentColor: '#38bdf8'
+    },
+    {
+        id: 'gathering_storm',
+        name: 'Gathering Storm',
+        duration: 120,
+        spawnCount: 2,
+        accentColor: '#facc15'
+    },
+    {
+        id: 'nightfall_onslaught',
+        name: 'Nightfall Onslaught',
+        duration: 150,
+        spawnCount: 3,
+        accentColor: '#ef4444'
+    }
+];
+
+const FALLBACK_PHASE = {
+    id: 'unknown',
+    name: 'Calm',
+    duration: 0,
+    spawnCount: 0,
+    accentColor: '#64748b'
+};
+
+function createEncounterState() {
+    return {
+        phases: DEFAULT_ENCOUNTER_PHASES.map((phase) => ({ ...phase })),
+        currentIndex: 0,
+        phaseElapsed: 0,
+        totalElapsed: 0
+    };
+}
+
 export const gameState = {
     canvas: null,
     ctx: null,
@@ -42,7 +83,8 @@ export const gameState = {
     castleProbeTimer: 0,
     castleProbeSourceId: null,
     runOutcome: null,
-    runOutcomeReason: null
+    runOutcomeReason: null,
+    encounter: createEncounterState()
 };
 
 function clamp(value, min, max) {
@@ -153,6 +195,7 @@ export function initializeGameState(canvas) {
     gameState.castleProbeSourceId = null;
     gameState.runOutcome = null;
     gameState.runOutcomeReason = null;
+    gameState.encounter = createEncounterState();
     cloneShopItems();
 }
 
@@ -267,4 +310,26 @@ export function getDetectionThreat() {
         label = 'Suspicious';
     }
     return { level: highest, label };
+}
+
+export function getEncounterPhaseStatus() {
+    const encounter = gameState.encounter;
+    if (!encounter || !Array.isArray(encounter.phases) || encounter.phases.length === 0) {
+        return { phase: FALLBACK_PHASE, remaining: 0 };
+    }
+
+    const safeIndex = Math.min(
+        Math.max(encounter.currentIndex ?? 0, 0),
+        encounter.phases.length - 1
+    );
+    const phase = encounter.phases[safeIndex] ?? FALLBACK_PHASE;
+
+    if (!Number.isFinite(phase.duration)) {
+        return { phase, remaining: 0 };
+    }
+
+    const elapsed = Math.max(0, encounter.phaseElapsed ?? 0);
+    const remaining = Math.max(0, phase.duration - elapsed);
+
+    return { phase, remaining };
 }
