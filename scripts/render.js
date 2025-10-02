@@ -19,11 +19,16 @@ export function draw() {
     });
 
     gameState.villages.forEach((village) => {
-        ctx.fillStyle = '#6b4f3a';
+        ctx.fillStyle = village.isFallen ? 'rgba(139, 0, 0, 0.35)' : '#6b4f3a';
         ctx.beginPath();
         ctx.arc(village.x, village.y, 100, 0, Math.PI * 2);
         ctx.fill();
         village.huts.forEach((hut) => {
+            if (hut.hp <= 0) {
+                ctx.fillStyle = 'rgba(139, 69, 19, 0.2)';
+                ctx.fillRect(hut.x, hut.y, hut.width, hut.height);
+                return;
+            }
             ctx.fillStyle = '#8B4513';
             ctx.fillRect(hut.x, hut.y, hut.width, hut.height);
         });

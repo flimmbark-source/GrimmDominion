@@ -7,6 +7,7 @@ import { updateHero, updateMilitiaAI, updateProjectiles, updateScoutsAI, handleC
 import { updateWorldTextEffects } from './effects.js';
 import { updateCamera } from './camera.js';
 import { draw } from './render.js';
+import { tickRunConditions } from './run-conditions.js';
 
 function spawnScout() {
     gameState.scouts.push(createScout());
@@ -68,7 +69,18 @@ function gameLoop(timestamp) {
         'militia'
     );
     handleCollisionsAndDeaths();
+    if (gameState.gameOver) {
+        updateUI();
+        draw();
+        return;
+    }
     updateWorldTextEffects(deltaTime);
+    tickRunConditions(deltaTime);
+    if (gameState.gameOver) {
+        updateUI();
+        draw();
+        return;
+    }
 
     gameState.spawnTimer += deltaTime;
     if (gameState.spawnTimer >= GAME_CONFIG.darkLordSpawnCooldown) {

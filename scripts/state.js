@@ -31,7 +31,13 @@ export const gameState = {
     villages: [],
     worldTextEffects: [],
     spawnTimer: GAME_CONFIG.darkLordSpawnCooldown,
-    gameOver: false
+    gameOver: false,
+    elapsedTime: 0,
+    villagesLost: 0,
+    totalVillageSaves: 0,
+    heroVillageSaves: 0,
+    castleBreached: false,
+    runSummary: null
 };
 
 function createHero() {
@@ -66,7 +72,9 @@ function createVillage() {
         militia: [],
         isUnderAttack: false,
         attackers: new Set(),
-        heroHasHelped: false
+        heroHasHelped: false,
+        isFallen: false,
+        timesSaved: 0
     };
 
     for (let i = 0; i < HUTS_PER_VILLAGE; i += 1) {
@@ -76,7 +84,8 @@ function createVillage() {
             width: 50,
             height: 40,
             hp: 200,
-            maxHp: 200
+            maxHp: 200,
+            destroyed: false
         });
     }
 
@@ -116,6 +125,12 @@ export function initializeGameState(canvas) {
     gameState.camera.height = canvas.height;
     gameState.spawnTimer = GAME_CONFIG.darkLordSpawnCooldown;
     gameState.gameOver = false;
+    gameState.elapsedTime = 0;
+    gameState.villagesLost = 0;
+    gameState.totalVillageSaves = 0;
+    gameState.heroVillageSaves = 0;
+    gameState.castleBreached = false;
+    gameState.runSummary = null;
 
     gameState.forests = Array.from({ length: FOREST_COUNT }, createForest);
     gameState.villages = Array.from({ length: VILLAGE_COUNT }, createVillage);
@@ -133,6 +148,50 @@ export function resetHeroTarget() {
 
 export function cloneShopItems() {
     gameState.shopItems = SHOP_ITEMS.map((item) => ({ ...item, effect: { ...item.effect } }));
+}
+
+export function endRun(result, reason) {
+    if (gameState.gameOver) {
+        return;
+    }
+
+    gameState.gameOver = true;
+    gameState.runSummary = {
+        result,
+        reason,
+        elapsedTime: gameState.elapsedTime,
+        villagesLost: gameState.villagesLost,
+        totalVillageSaves: gameState.totalVillageSaves,
+        heroVillageSaves: gameState.heroVillageSaves,
+        castleBreached: gameState.castleBreached
+    };
+
+    const screen = document.getElementById('runEndScreen');
+    const title = document.getElementById('runEndTitle');
+    const subtitle = document.getElementById('runEndSubtitle');
+    const statsContainer = document.getElementById('runEndStats');
+
+    if (screen && title && subtitle && statsContainer) {
+        const isVictory = result === 'win';
+        title.textContent = isVictory ? 'Victory!' : 'Defeat';
+        title.classList.toggle('text-green-400', isVictory);
+        title.classList.toggle('text-red-500', !isVictory);
+        subtitle.textContent = reason;
+
+        const minutes = Math.floor(gameState.elapsedTime / 60);
+        const seconds = Math.floor(gameState.elapsedTime % 60)
+            .toString()
+            .padStart(2, '0');
+
+        statsContainer.innerHTML = `
+            <p><span class="font-semibold">Time Survived:</span> ${minutes}:${seconds}</p>
+            <p><span class="font-semibold">Villages Saved:</span> ${gameState.totalVillageSaves}</p>
+            <p><span class="font-semibold">Hero-Assisted Saves:</span> ${gameState.heroVillageSaves}</p>
+            <p><span class="font-semibold">Villages Lost:</span> ${gameState.villagesLost}</p>
+        `;
+
+        screen.classList.remove('hidden');
+    }
 }
 
 export function createScout() {
