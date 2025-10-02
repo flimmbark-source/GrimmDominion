@@ -17,6 +17,14 @@
     <div id="gameContainer" class="w-full max-w-5xl mx-auto flex-grow relative rounded-lg overflow-hidden">
         <canvas id="gameCanvas"></canvas>
 
+        <div class="absolute top-4 right-4 ui-panel p-3 rounded-lg space-y-2 text-sm w-60">
+            <div class="font-medieval text-xl text-yellow-300 text-center">Objectives</div>
+            <div id="runObjectiveText" class="text-gray-200 text-center leading-snug"></div>
+            <div class="flex justify-between"><span class="text-gray-400">Time</span><span id="runTimerText" class="font-semibold">00:00</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Villages Saved</span><span id="runVillagesSavedText" class="font-semibold">0</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Villages Lost</span><span id="runVillagesLostText" class="font-semibold">0</span></div>
+        </div>
+
         <div class="absolute bottom-4 left-4 flex items-end space-x-2">
             <div class="ui-panel p-2 rounded-lg flex flex-col space-y-2" style="width: 250px;">
                 <div class="flex items-center space-x-2 w-full">
@@ -41,9 +49,11 @@
 
         <div id="tooltipPanel" class="hidden absolute ui-panel p-2 rounded-md text-sm pointer-events-none z-50"></div>
 
-        <div id="gameOverScreen" class="hidden absolute inset-0 bg-black bg-opacity-75 flex flex-col justify-center items-center z-30">
-            <h2 class="font-medieval text-6xl text-red-500">You Have Perished</h2>
-            <p class="text-xl mt-4">Refresh to try again.</p>
+        <div id="runEndScreen" class="hidden absolute inset-0 bg-black bg-opacity-75 flex flex-col justify-center items-center z-30 text-center space-y-4 p-4">
+            <h2 id="runEndTitle" class="font-medieval text-6xl">Run Complete</h2>
+            <p id="runEndSubtitle" class="text-xl"></p>
+            <div id="runEndStats" class="text-lg space-y-1"></div>
+            <p class="text-sm text-gray-300">Refresh to embark again.</p>
         </div>
 
         <div id="draggedItemIcon" class="item-icon hidden"></div>

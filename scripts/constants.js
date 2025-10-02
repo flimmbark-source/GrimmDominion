@@ -8,6 +8,12 @@ export const GAME_CONFIG = {
     sellPriceModifier: 0.5
 };
 
+export const RUN_CONDITIONS = {
+    survivalTimeToWin: 15 * 60,
+    heroVillageSavesToWin: 3,
+    villageLossThreshold: 2
+};
+
 export const HERO_BASE_STATS = {
     x: WORLD.width / 2 + 400,
     y: WORLD.height / 2 + 300,

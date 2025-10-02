@@ -1,5 +1,5 @@
 import { GAME_CONFIG, MILITIA_STATS, SCOUT_STATS } from './constants.js';
-import { gameState } from './state.js';
+import { gameState, endRun } from './state.js';
 import { distance, isPointInRect } from './utils.js';
 
 function canScoutSeeHero(scout) {
@@ -163,7 +163,13 @@ export function updateScoutsAI(deltaTime) {
                 scout.targetY = scout.villageAttackTarget.y;
                 const distToTarget = distance(scout.targetX, scout.targetY, scout.x, scout.y);
                 if (distToTarget < 30 && scout.villageAttackCooldown <= 0) {
-                    scout.villageAttackTarget.hp -= SCOUT_STATS.villageAttackDamage;
+                    scout.villageAttackTarget.hp = Math.max(
+                        0,
+                        scout.villageAttackTarget.hp - SCOUT_STATS.villageAttackDamage
+                    );
+                    if ('destroyed' in scout.villageAttackTarget && scout.villageAttackTarget.hp <= 0) {
+                        scout.villageAttackTarget.destroyed = true;
+                    }
                     scout.villageAttackCooldown = SCOUT_STATS.villageAttackCooldown;
                 }
             }
@@ -199,12 +205,26 @@ export function handleCollisionsAndDeaths() {
             gameState.hero.hp -= SCOUT_STATS.damage;
             scout.heroAttackCooldown = SCOUT_STATS.heroAttackCooldown;
         }
+
+        if (!gameState.castleBreached) {
+            const withinCastle =
+                scout.x >= gameState.castle.x &&
+                scout.x <= gameState.castle.x + gameState.castle.width &&
+                scout.y >= gameState.castle.y &&
+                scout.y <= gameState.castle.y + gameState.castle.height;
+
+            if (withinCastle) {
+                gameState.castleBreached = true;
+                endRun('loss', 'The castle gate was breached.');
+                return;
+            }
+        }
     }
 
     if (gameState.hero.hp <= 0) {
         gameState.hero.hp = 0;
-        gameState.gameOver = true;
-        document.getElementById('gameOverScreen').classList.remove('hidden');
+        endRun('loss', 'The hero fell in battle.');
+        return;
     }
 
     for (let i = gameState.scouts.length - 1; i >= 0; i -= 1) {
@@ -215,8 +235,15 @@ export function handleCollisionsAndDeaths() {
                     village.attackers.delete(deadScout.id);
                     if (village.attackers.size === 0 && village.isUnderAttack) {
                         village.isUnderAttack = false;
+                        if (!village.isFallen) {
+                            village.timesSaved += 1;
+                            gameState.totalVillageSaves += 1;
+                        }
                         if (village.heroHasHelped) {
                             gameState.hero.gold += GAME_CONFIG.villageGoldReward;
+                            if (!village.isFallen) {
+                                gameState.heroVillageSaves += 1;
+                            }
                             gameState.worldTextEffects.push({
                                 text: 'Saved!',
                                 x: village.x,
