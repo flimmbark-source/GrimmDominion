@@ -116,8 +116,42 @@ function createForest() {
 }
 
 function createVillage() {
-    const baseX = (Math.random() > 0.5 ? 0.25 : 0.75) * WORLD.width + (Math.random() - 0.5) * 500;
-    const baseY = (Math.random() > 0.5 ? 0.25 : 0.75) * WORLD.height + (Math.random() - 0.5) * 500;
+    const castleCenterX = CASTLE.x + CASTLE.width / 2;
+    const castleCenterY = CASTLE.y + CASTLE.height / 2;
+    const minDistanceFromCastle = Math.max(CASTLE.width, CASTLE.height) * 6;
+
+    let baseX = castleCenterX;
+    let baseY = castleCenterY;
+    let attempts = 0;
+
+    while (attempts < 8) {
+        const horizontalAnchor = Math.random() < 0.5 ? 0.15 : 0.85;
+        const verticalAnchor = Math.random() < 0.5 ? 0.2 : 0.8;
+        baseX = clamp(WORLD.width * horizontalAnchor + (Math.random() - 0.5) * 220, 120, WORLD.width - 120);
+        baseY = clamp(WORLD.height * verticalAnchor + (Math.random() - 0.5) * 220, 120, WORLD.height - 120);
+
+        const distanceToCastle = Math.hypot(baseX - castleCenterX, baseY - castleCenterY);
+        if (distanceToCastle >= minDistanceFromCastle) {
+            break;
+        }
+        attempts += 1;
+    }
+
+    const finalDistance = Math.hypot(baseX - castleCenterX, baseY - castleCenterY);
+    if (finalDistance < minDistanceFromCastle) {
+        const directionAngle = Math.atan2(baseY - castleCenterY, baseX - castleCenterX) + (Math.random() - 0.5) * 0.6;
+        baseX = clamp(
+            castleCenterX + Math.cos(directionAngle) * minDistanceFromCastle,
+            120,
+            WORLD.width - 120
+        );
+        baseY = clamp(
+            castleCenterY + Math.sin(directionAngle) * minDistanceFromCastle,
+            120,
+            WORLD.height - 120
+        );
+    }
+
     const village = {
         id: Math.random(),
         x: baseX,

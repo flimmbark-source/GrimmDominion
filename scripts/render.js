@@ -103,24 +103,15 @@ export function draw() {
     gameState.scouts.forEach((scout) => {
         const detectionRatio = Math.max(0, Math.min(1, scout.detectionLevel ?? 0));
         const shouldShowCone = scout.state !== 'ATTACKING_VILLAGE';
-        if (shouldShowCone && scout.sightRange && scout.visionCone) {
-            const coneMultiplier = scout.state === 'CHASING' ? 1.2 : 1;
-            const halfCone = (scout.visionCone * coneMultiplier) / 2;
+        if (shouldShowCone && scout.sightRange) {
             ctx.beginPath();
-            ctx.moveTo(scout.x, scout.y);
-            ctx.arc(
-                scout.x,
-                scout.y,
-                scout.sightRange,
-                (scout.facingAngle ?? 0) - halfCone,
-                (scout.facingAngle ?? 0) + halfCone
-            );
-            ctx.closePath();
-            ctx.fillStyle = `rgba(255, 255, 120, ${0.05 + detectionRatio * 0.25})`;
-            ctx.fill();
+            ctx.arc(scout.x, scout.y, scout.sightRange, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(255, 255, 170, ${0.02 + detectionRatio * 0.08})`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
             ctx.beginPath();
             ctx.arc(scout.x, scout.y, scout.criticalSightRange, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 120, 120, ${0.08 + detectionRatio * 0.3})`;
+            ctx.fillStyle = `rgba(255, 140, 140, ${0.04 + detectionRatio * 0.12})`;
             ctx.fill();
         }
         if (scout.role === 'priest' && scout.healRadius) {
