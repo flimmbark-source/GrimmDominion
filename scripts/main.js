@@ -1,5 +1,5 @@
-import { GAME_CONFIG, MILITIA_PROJECTILE_SPEED, MILITIA_STATS, MINION_SPAWN_TABLE } from './constants.js';
-import { gameState, initializeGameState, resetHeroTarget, createMinion } from './state.js';
+import { MILITIA_PROJECTILE_SPEED, MILITIA_STATS } from './constants.js';
+import { gameState, initializeGameState, resetHeroTarget } from './state.js';
 import { setupShop } from './shop.js';
 import { createInventorySlots, drawInventory, updateUI } from './ui.js';
 import { setupDragAndDrop, isDraggingItem, updateDraggedIconPosition } from './drag-drop.js';
@@ -7,36 +7,7 @@ import { updateHero, updateMilitiaAI, updateProjectiles, updateScoutsAI, handleC
 import { updateWorldTextEffects } from './effects.js';
 import { updateCamera } from './camera.js';
 import { draw } from './render.js';
-
-function pickMinionType() {
-    const totalWeight = MINION_SPAWN_TABLE.reduce((sum, entry) => sum + entry.weight, 0);
-    let roll = Math.random() * totalWeight;
-    for (const entry of MINION_SPAWN_TABLE) {
-        roll -= entry.weight;
-        if (roll <= 0) {
-            return entry.type;
-        }
-    }
-    return MINION_SPAWN_TABLE[0].type;
-}
-
-function spawnMinion(type) {
-    gameState.scouts.push(createMinion(type));
-}
-
-function spawnMinionWave() {
-    const baseCount = Math.random() < 0.45 ? 2 : 1;
-    const spawnedTypes = [];
-    for (let i = 0; i < baseCount; i += 1) {
-        const type = pickMinionType();
-        spawnMinion(type);
-        spawnedTypes.push(type);
-    }
-
-    if (spawnedTypes.includes('tank') && !spawnedTypes.includes('priest') && Math.random() < 0.6) {
-        spawnMinion('priest');
-    }
-}
+import { initializeDirector, updateDirector } from './director.js';
 
 function resizeCanvas() {
     const container = document.getElementById('gameContainer');
@@ -96,11 +67,7 @@ function gameLoop(timestamp) {
     handleCollisionsAndDeaths();
     updateWorldTextEffects(deltaTime);
 
-    gameState.spawnTimer += deltaTime;
-    if (gameState.spawnTimer >= GAME_CONFIG.darkLordSpawnCooldown) {
-        spawnMinionWave();
-        gameState.spawnTimer = 0;
-    }
+    updateDirector(deltaTime);
 
     updateCamera();
     updateUI();
@@ -112,6 +79,7 @@ function gameLoop(timestamp) {
 function initialize() {
     const canvas = document.getElementById('gameCanvas');
     initializeGameState(canvas);
+    initializeDirector();
     createInventorySlots();
     drawInventory();
     setupShop(drawInventory);

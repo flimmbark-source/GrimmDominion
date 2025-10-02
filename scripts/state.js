@@ -30,9 +30,14 @@ export const gameState = {
     forests: [],
     villages: [],
     worldTextEffects: [],
-    spawnTimer: GAME_CONFIG.darkLordSpawnCooldown,
+    spawnTimer: 0,
+    director: null,
     gameOver: false
 };
+
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+}
 
 function createHero() {
     return {
@@ -115,7 +120,7 @@ export function initializeGameState(canvas) {
     gameState.hero = createHero();
     gameState.camera.width = canvas.width;
     gameState.camera.height = canvas.height;
-    gameState.spawnTimer = GAME_CONFIG.darkLordSpawnCooldown;
+    gameState.spawnTimer = 0;
     gameState.gameOver = false;
 
     gameState.forests = Array.from({ length: FOREST_COUNT }, createForest);
@@ -124,6 +129,7 @@ export function initializeGameState(canvas) {
     gameState.projectiles = [];
     gameState.militiaProjectiles = [];
     gameState.worldTextEffects = [];
+    gameState.director = null;
     cloneShopItems();
 }
 
@@ -136,7 +142,37 @@ export function cloneShopItems() {
     gameState.shopItems = SHOP_ITEMS.map((item) => ({ ...item, effect: { ...item.effect } }));
 }
 
-function getMinionSpawnPoint() {
+export function createScout(options = {}) {
+    const { assignment = 'PATROL', targetVillageId = null } = options;
+
+    let patrolCenterX = Math.random() * WORLD.width;
+    let patrolCenterY = Math.random() * WORLD.height;
+    let targetX = Math.random() * WORLD.width;
+    let targetY = Math.random() * WORLD.height;
+
+    if (assignment === 'RAID' && targetVillageId) {
+        const targetVillage = gameState.villages.find((village) => village.id === targetVillageId);
+        if (targetVillage) {
+            const approachAngle = Math.random() * Math.PI * 2;
+            const approachRadius = 180 + Math.random() * 120;
+            patrolCenterX = clamp(targetVillage.x + Math.cos(approachAngle) * approachRadius, 0, WORLD.width);
+            patrolCenterY = clamp(targetVillage.y + Math.sin(approachAngle) * approachRadius, 0, WORLD.height);
+            targetX = clamp(targetVillage.x + (Math.random() - 0.5) * 120, 0, WORLD.width);
+            targetY = clamp(targetVillage.y + (Math.random() - 0.5) * 120, 0, WORLD.height);
+        }
+    } else {
+        targetX = clamp(
+            patrolCenterX + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius,
+            0,
+            WORLD.width
+        );
+        targetY = clamp(
+            patrolCenterY + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius,
+            0,
+            WORLD.height
+        );
+    }
+
     return {
         x: gameState.castle.x + gameState.castle.width / 2,
         y: gameState.castle.y + gameState.castle.height / 2
@@ -158,14 +194,13 @@ export function createMinion(role = 'scout') {
         speed: config.baseSpeed,
         baseSpeed: config.baseSpeed,
         isBuffed: false,
+        assignment,
+        targetVillageId,
         state: 'PATROLLING',
-        targetX: Math.random() * WORLD.width,
-        targetY: Math.random() * WORLD.height,
-        patrolCenterX: Math.random() * WORLD.width,
-        patrolCenterY: Math.random() * WORLD.height,
-        patrolRadius: config.patrolRadius,
-        sightRange: config.sightRange,
-        criticalSightRange: config.criticalSightRange,
+        patrolCenterX,
+        patrolCenterY,
+        targetX,
+        targetY,
         villageAttackTarget: null,
         villageAttackCooldown: 0,
         villageAttackCooldownMax: config.villageAttackCooldown,
