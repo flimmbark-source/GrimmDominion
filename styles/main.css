@@ -49,6 +49,22 @@ canvas {
     cursor: not-allowed;
 }
 
+.shop-build-button {
+    background-color: rgba(74, 58, 42, 0.85);
+    border: 1px solid #7a5c4b;
+    text-align: left;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.shop-build-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.shop-build-button:disabled {
+    cursor: not-allowed;
+}
+
 .inventory-slot {
     width: 48px;
     height: 48px;

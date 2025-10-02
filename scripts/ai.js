@@ -3,11 +3,15 @@ import { gameState } from './state.js';
 import { distance, isPointInRect } from './utils.js';
 
 function canScoutSeeHero(scout) {
+    const stealthMultiplier = Math.max(0.2, gameState.hero.stealthDetectionMultiplier);
+    const detectionRange = SCOUT_STATS.sightRange * stealthMultiplier;
+    const criticalRange = SCOUT_STATS.criticalSightRange * Math.min(1, stealthMultiplier);
+
     const distToHero = distance(gameState.hero.x, gameState.hero.y, scout.x, scout.y);
-    if (distToHero <= SCOUT_STATS.criticalSightRange) {
+    if (distToHero <= criticalRange) {
         return true;
     }
-    if (distToHero > SCOUT_STATS.sightRange) {
+    if (distToHero > detectionRange) {
         return false;
     }
     const heroInForest = gameState.forests.some((forest) => isPointInRect(gameState.hero, forest));
@@ -15,22 +19,37 @@ function canScoutSeeHero(scout) {
 }
 
 export function updateHero(deltaTime) {
-    const dx = gameState.hero.targetX - gameState.hero.x;
-    const dy = gameState.hero.targetY - gameState.hero.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > gameState.hero.speed) {
-        gameState.hero.x += (dx / dist) * gameState.hero.speed;
-        gameState.hero.y += (dy / dist) * gameState.hero.speed;
+    const hero = gameState.hero;
+    const isBeingChased = gameState.scouts.some((scout) => scout.state === 'CHASING');
+    const quietBonus = hero.quietSprintBonus && !isBeingChased ? hero.quietSprintBonus : 0;
+    hero.speed = hero.baseSpeed + quietBonus;
+    hero.attackCooldown = hero.baseAttackCooldown;
+    hero.isShadowStealthed = !isBeingChased;
+
+    if (hero.staminaBurstTimer > 0) {
+        hero.staminaBurstTimer -= deltaTime;
+        if (hero.staminaBurstTimer <= 0) {
+            hero.attackCooldownModifier = 0;
+            hero.staminaBurstTimer = 0;
+        }
     }
 
-    gameState.hero.x = Math.max(0, Math.min(gameState.world.width - gameState.hero.width, gameState.hero.x));
-    gameState.hero.y = Math.max(0, Math.min(gameState.world.height - gameState.hero.height, gameState.hero.y));
+    const dx = hero.targetX - hero.x;
+    const dy = hero.targetY - hero.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > hero.speed) {
+        hero.x += (dx / dist) * hero.speed;
+        hero.y += (dy / dist) * hero.speed;
+    }
 
-    gameState.hero.attackTimer -= deltaTime;
-    if (gameState.hero.attackTimer <= 0) {
+    hero.x = Math.max(0, Math.min(gameState.world.width - hero.width, hero.x));
+    hero.y = Math.max(0, Math.min(gameState.world.height - hero.height, hero.y));
+
+    hero.attackTimer -= deltaTime;
+    if (hero.attackTimer <= 0) {
         const nearestScout = gameState.scouts.reduce((closest, scout) => {
-            const d = distance(gameState.hero.x, gameState.hero.y, scout.x, scout.y);
-            if (d < gameState.hero.attackRange && (!closest || d < closest.dist)) {
+            const d = distance(hero.x, hero.y, scout.x, scout.y);
+            if (d < hero.attackRange && (!closest || d < closest.dist)) {
                 return { scout, dist: d };
             }
             return closest;
@@ -38,13 +57,14 @@ export function updateHero(deltaTime) {
 
         if (nearestScout) {
             gameState.projectiles.push({
-                x: gameState.hero.x + gameState.hero.width / 2,
-                y: gameState.hero.y + gameState.hero.height / 2,
+                x: hero.x + hero.width / 2,
+                y: hero.y + hero.height / 2,
                 radius: 5,
                 color: '#f0e68c',
                 targetId: nearestScout.scout.id
             });
-            gameState.hero.attackTimer = gameState.hero.attackCooldown;
+            const effectiveCooldown = Math.max(0.2, hero.baseAttackCooldown + hero.attackCooldownModifier);
+            hero.attackTimer = effectiveCooldown;
         }
     }
 }
@@ -100,7 +120,22 @@ export function updateProjectiles(projectiles, speed, damage, owner) {
             projectile.y += (dy / dist) * speed;
         } else {
             projectiles.splice(i, 1);
-            target.hp -= damage;
+            let appliedDamage = damage;
+            if (owner === 'hero') {
+                const hero = gameState.hero;
+                const canBackstab =
+                    hero.backstabMultiplier > 1 &&
+                    hero.isShadowStealthed &&
+                    !hero.backstabbedTargets.has(target.id);
+                if (canBackstab) {
+                    appliedDamage *= hero.backstabMultiplier;
+                    hero.backstabbedTargets.add(target.id);
+                }
+                target.lastHitBy = 'hero';
+            } else if (owner === 'militia') {
+                target.lastHitBy = 'militia';
+            }
+            target.hp -= appliedDamage;
             if (owner === 'hero') {
                 gameState.villages.forEach((village) => {
                     if (village.attackers.has(target.id)) {
@@ -191,12 +226,41 @@ export function updateScoutsAI(deltaTime) {
     });
 }
 
+function createBuildResolutionEffect(village) {
+    const { buildPath } = gameState.hero;
+    if (buildPath === 'shadow') {
+        return {
+            text: 'Shadow Solution: Scouts silenced before the alarm.',
+            x: village.x,
+            y: village.y + 30,
+            color: 'rgba(178, 144, 255, 1)',
+            font: 'bold 18px MedievalSharp',
+            lifespan: 2.5
+        };
+    }
+    if (buildPath === 'skirmish') {
+        return {
+            text: 'Skirmish Solution: Parried blades in the square.',
+            x: village.x,
+            y: village.y + 30,
+            color: 'rgba(255, 196, 120, 1)',
+            font: 'bold 18px MedievalSharp',
+            lifespan: 2.5
+        };
+    }
+    return null;
+}
+
 export function handleCollisionsAndDeaths() {
     for (let i = gameState.scouts.length - 1; i >= 0; i -= 1) {
         const scout = gameState.scouts[i];
         const distToHero = distance(scout.x, scout.y, gameState.hero.x + gameState.hero.width / 2, gameState.hero.y + gameState.hero.height / 2);
         if (distToHero < scout.radius + gameState.hero.width / 2 && scout.heroAttackCooldown <= 0) {
-            gameState.hero.hp -= SCOUT_STATS.damage;
+            let damage = SCOUT_STATS.damage;
+            if (gameState.hero.parryReduction > 0) {
+                damage *= 1 - gameState.hero.parryReduction;
+            }
+            gameState.hero.hp -= damage;
             scout.heroAttackCooldown = SCOUT_STATS.heroAttackCooldown;
         }
     }
@@ -210,6 +274,10 @@ export function handleCollisionsAndDeaths() {
     for (let i = gameState.scouts.length - 1; i >= 0; i -= 1) {
         if (gameState.scouts[i].hp <= 0) {
             const deadScout = gameState.scouts.splice(i, 1)[0];
+            if (deadScout.lastHitBy === 'hero' && gameState.hero.staminaBurstDuration > 0) {
+                gameState.hero.attackCooldownModifier = gameState.hero.staminaBurstBonus;
+                gameState.hero.staminaBurstTimer = gameState.hero.staminaBurstDuration;
+            }
             gameState.villages.forEach((village) => {
                 if (village.attackers.has(deadScout.id)) {
                     village.attackers.delete(deadScout.id);
@@ -233,6 +301,10 @@ export function handleCollisionsAndDeaths() {
                                 font: 'bold 20px MedievalSharp',
                                 lifespan: 2
                             });
+                            const buildEffect = createBuildResolutionEffect(village);
+                            if (buildEffect) {
+                                gameState.worldTextEffects.push(buildEffect);
+                            }
                         } else {
                             gameState.worldTextEffects.push({
                                 text: 'Militia Saved the Day!',
