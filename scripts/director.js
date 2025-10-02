@@ -53,10 +53,6 @@ export function initializeDirector() {
     };
 
     gameState.spawnTimer = 0;
-
-    for (let i = 0; i < DIRECTOR_CONFIG.initialPatrolCount; i += 1) {
-        gameState.scouts.push(createScout({ assignment: 'PATROL' }));
-    }
 }
 
 export function updateDirector(deltaTime) {

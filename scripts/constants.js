@@ -10,7 +10,7 @@ export const GAME_CONFIG = {
 
 export const DIRECTOR_CONFIG = {
     targetPatrolCount: 6,
-    initialPatrolCount: 4,
+    initialPatrolCount: 0,
     spawnCost: 3,
     startingEnergy: 6,
     maxEnergy: 24,
@@ -26,7 +26,7 @@ export const DIRECTOR_CONFIG = {
     baseRaidWeight: 0.55,
     multiVillageRaidMultiplier: 2.2,
     maxBatchSpawns: 3,
-    initialDelay: 3.5
+    initialDelay: 2.5
 };
 
 export const HERO_BASE_STATS = {
