@@ -49,6 +49,30 @@ canvas {
     cursor: not-allowed;
 }
 
+.shop-build-tab {
+    background-color: #2a1a0a;
+    border: 1px solid #7a5c4b;
+    color: #d5c6a1;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.shop-build-tab:hover:not(.active):not(:disabled) {
+    background-color: #3a2a1a;
+    transform: translateY(-1px);
+}
+
+.shop-build-tab.active {
+    background-color: #7a4a28;
+    color: #fff1c1;
+    border-color: #d4af37;
+    transform: translateY(-1px);
+}
+
+.shop-build-tab.locked {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
 .inventory-slot {
     width: 48px;
     height: 48px;

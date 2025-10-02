@@ -3,7 +3,7 @@ import {
     CAMERA,
     CASTLE,
     SHOP,
-    SHOP_ITEMS,
+    SHOP_BUILDS,
     HERO_BASE_STATS,
     GAME_CONFIG,
     FOREST_COUNT,
@@ -23,7 +23,9 @@ export const gameState = {
     castle: { ...CASTLE },
     hero: null,
     shop: { ...SHOP },
-    shopItems: SHOP_ITEMS,
+    shopBuilds: [],
+    activeShopBuildId: null,
+    shopItems: [],
     scouts: [],
     projectiles: [],
     militiaProjectiles: [],
@@ -42,6 +44,18 @@ function clamp(value, min, max) {
 function createHero() {
     return {
         ...HERO_BASE_STATS,
+        baseSpeed: HERO_BASE_STATS.speed,
+        baseAttackCooldown: HERO_BASE_STATS.attackCooldown,
+        attackCooldownMultiplier: 1,
+        stealthModifier: 0,
+        quietSprintBonus: 0,
+        backstabMultiplier: 1,
+        damageMitigation: 0,
+        staminaBurstBonus: 0,
+        staminaBurstDuration: 0,
+        staminaBurstTimer: 0,
+        isSpotted: false,
+        selectedBuildId: null,
         targetX: HERO_BASE_STATS.x,
         targetY: HERO_BASE_STATS.y,
         attackTimer: 0,
@@ -72,7 +86,8 @@ function createVillage() {
         militia: [],
         isUnderAttack: false,
         attackers: new Set(),
-        heroHasHelped: false
+        heroHasHelped: false,
+        lastDefenseStyle: null
     };
 
     for (let i = 0; i < HUTS_PER_VILLAGE; i += 1) {
@@ -139,7 +154,17 @@ export function resetHeroTarget() {
 }
 
 export function cloneShopItems() {
-    gameState.shopItems = SHOP_ITEMS.map((item) => ({ ...item, effect: { ...item.effect } }));
+    gameState.shopBuilds = SHOP_BUILDS.map((build) => ({
+        ...build,
+        items: build.items.map((item) => ({
+            ...item,
+            buildId: build.id,
+            effect: { ...item.effect }
+        }))
+    }));
+    gameState.activeShopBuildId = gameState.shopBuilds[0]?.id ?? null;
+    const activeBuild = gameState.shopBuilds.find((build) => build.id === gameState.activeShopBuildId);
+    gameState.shopItems = activeBuild ? activeBuild.items : [];
 }
 
 export function createScout(options = {}) {

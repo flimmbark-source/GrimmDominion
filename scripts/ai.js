@@ -9,13 +9,40 @@ function getHeroCenter() {
     };
 }
 
+function getHeroMovementSpeed() {
+    let speed = gameState.hero.speed;
+    if (gameState.hero.quietSprintBonus > 0 && !gameState.hero.isSpotted && gameState.hero.revealTimer <= 0) {
+        speed += gameState.hero.quietSprintBonus;
+    }
+    return speed;
+}
+
+function getHeroAttackCooldown() {
+    const baseCooldown = Math.max(0.1, gameState.hero.attackCooldown);
+    let multiplier = gameState.hero.attackCooldownMultiplier || 1;
+    if (gameState.hero.staminaBurstTimer > 0 && gameState.hero.staminaBurstBonus > 0) {
+        multiplier *= Math.max(0.1, 1 - gameState.hero.staminaBurstBonus);
+    }
+    return Math.max(0.1, baseCooldown * multiplier);
+}
+
+function applyDamageToHero(amount) {
+    const mitigation = Math.min(0.9, Math.max(0, gameState.hero.damageMitigation || 0));
+    const mitigatedDamage = amount * (1 - mitigation);
+    gameState.hero.hp -= mitigatedDamage;
+}
+
 function canMinionSeeHero(minion) {
     const heroCenter = getHeroCenter();
     const distToHero = distance(heroCenter.x, heroCenter.y, minion.x, minion.y);
-    if (distToHero <= minion.criticalSightRange) {
+    const revealActive = gameState.hero.revealTimer > 0;
+    const stealthModifier = revealActive ? 0 : Math.min(0.6, gameState.hero.stealthModifier || 0);
+    const criticalRange = minion.criticalSightRange * (revealActive ? 1 : Math.max(0.4, 1 - stealthModifier * 0.5));
+    if (distToHero <= criticalRange) {
         return true;
     }
-    if (distToHero > minion.sightRange) {
+    const sightRange = minion.sightRange * (revealActive ? 1 : Math.max(0.25, 1 - stealthModifier));
+    if (distToHero > sightRange) {
         return false;
     }
     const heroInForest = gameState.forests.some((forest) => isPointInRect(gameState.hero, forest));
@@ -98,7 +125,7 @@ function shouldTankSwing(tank) {
 function performTankSwing(tank) {
     const heroCenter = getHeroCenter();
     if (distance(heroCenter.x, heroCenter.y, tank.x, tank.y) <= tank.swingRadius) {
-        gameState.hero.hp -= tank.damage;
+        applyDamageToHero(tank.damage);
     }
 
     gameState.villages.forEach((village) => {
@@ -126,13 +153,20 @@ function performTankSwing(tank) {
 
 export function updateHero(deltaTime) {
     gameState.hero.revealTimer = Math.max(0, gameState.hero.revealTimer - deltaTime);
+    if (gameState.hero.staminaBurstTimer > 0) {
+        gameState.hero.staminaBurstTimer = Math.max(0, gameState.hero.staminaBurstTimer - deltaTime);
+    }
 
     const dx = gameState.hero.targetX - gameState.hero.x;
     const dy = gameState.hero.targetY - gameState.hero.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > gameState.hero.speed) {
-        gameState.hero.x += (dx / dist) * gameState.hero.speed;
-        gameState.hero.y += (dy / dist) * gameState.hero.speed;
+    const moveSpeed = getHeroMovementSpeed();
+    if (dist > moveSpeed) {
+        gameState.hero.x += (dx / dist) * moveSpeed;
+        gameState.hero.y += (dy / dist) * moveSpeed;
+    } else {
+        gameState.hero.x = gameState.hero.targetX;
+        gameState.hero.y = gameState.hero.targetY;
     }
 
     gameState.hero.x = Math.max(0, Math.min(gameState.world.width - gameState.hero.width, gameState.hero.x));
@@ -156,7 +190,7 @@ export function updateHero(deltaTime) {
                 color: '#f0e68c',
                 targetId: nearestScout.scout.id
             });
-            gameState.hero.attackTimer = gameState.hero.attackCooldown;
+            gameState.hero.attackTimer = getHeroAttackCooldown();
         }
     }
 }
@@ -199,6 +233,59 @@ export function updateMilitiaAI(deltaTime) {
     });
 }
 
+function applyHeroOnHitBonuses(target, baseDamage) {
+    let damage = baseDamage;
+    let usedBackstab = false;
+    const canBackstab =
+        gameState.hero.backstabMultiplier > 1 &&
+        !gameState.hero.isSpotted &&
+        gameState.hero.revealTimer <= 0 &&
+        target.state !== 'CHASING';
+    if (canBackstab) {
+        damage *= gameState.hero.backstabMultiplier;
+        usedBackstab = true;
+        gameState.worldTextEffects.push({
+            text: 'Backstab!',
+            x: target.x,
+            y: target.y - 25,
+            color: 'rgba(180, 255, 200, 0.95)',
+            font: 'bold 18px MedievalSharp',
+            lifespan: 0.8
+        });
+    }
+    return { damage, usedBackstab };
+}
+
+function handleHeroKill(target, context) {
+    if (gameState.hero.staminaBurstBonus > 0 && gameState.hero.staminaBurstDuration > 0) {
+        gameState.hero.staminaBurstTimer = gameState.hero.staminaBurstDuration;
+        gameState.hero.attackTimer = Math.min(gameState.hero.attackTimer, getHeroAttackCooldown());
+        gameState.worldTextEffects.push({
+            text: 'Stamina Burst!',
+            x: gameState.hero.x + gameState.hero.width / 2,
+            y: gameState.hero.y - 20,
+            color: 'rgba(255, 230, 160, 0.95)',
+            font: 'bold 18px MedievalSharp',
+            lifespan: 1
+        });
+    }
+
+    let defenseStyle = null;
+    if (context.usedBackstab && gameState.hero.backstabMultiplier > 1) {
+        defenseStyle = 'shadow';
+    } else if (gameState.hero.damageMitigation > 0 || gameState.hero.staminaBurstBonus > 0) {
+        defenseStyle = 'skirmish';
+    }
+
+    if (defenseStyle) {
+        gameState.villages.forEach((village) => {
+            if (village.attackers.has(target.id)) {
+                village.lastDefenseStyle = defenseStyle;
+            }
+        });
+    }
+}
+
 export function updateProjectiles(projectiles, speed, damage, owner) {
     for (let i = projectiles.length - 1; i >= 0; i -= 1) {
         const projectile = projectiles[i];
@@ -217,13 +304,23 @@ export function updateProjectiles(projectiles, speed, damage, owner) {
         } else {
             projectiles.splice(i, 1);
             const multiplier = target.damageMultipliers?.[owner] ?? 1;
-            target.hp = Math.max(0, target.hp - damage * multiplier);
+            let appliedDamage = damage * multiplier;
+            const heroHitContext = { usedBackstab: false };
+            if (owner === 'hero') {
+                const result = applyHeroOnHitBonuses(target, appliedDamage);
+                appliedDamage = result.damage;
+                heroHitContext.usedBackstab = result.usedBackstab;
+            }
+            target.hp = Math.max(0, target.hp - appliedDamage);
             if (owner === 'hero') {
                 gameState.villages.forEach((village) => {
                     if (village.attackers.has(target.id)) {
                         village.heroHasHelped = true;
                     }
                 });
+                if (target.hp <= 0) {
+                    handleHeroKill(target, heroHitContext);
+                }
             }
         }
     }
@@ -231,6 +328,7 @@ export function updateProjectiles(projectiles, speed, damage, owner) {
 
 export function updateScoutsAI(deltaTime) {
     const heroCenter = getHeroCenter();
+    let heroSpotted = false;
     gameState.scouts.forEach((scout) => {
         scout.villageAttackCooldown -= deltaTime;
         scout.heroAttackCooldown -= deltaTime;
@@ -271,6 +369,7 @@ export function updateScoutsAI(deltaTime) {
 
         if (scout.state === 'PATROLLING') {
             if (canMinionSeeHero(scout)) {
+                heroSpotted = true;
                 scout.state = 'CHASING';
             } else {
                 for (const village of gameState.villages) {
@@ -426,6 +525,7 @@ export function updateScoutsAI(deltaTime) {
             scout.revealCooldownTimer <= 0 &&
             canMinionSeeHero(scout)
         ) {
+            heroSpotted = true;
             gameState.hero.revealTimer = Math.max(gameState.hero.revealTimer, scout.revealDuration);
             scout.revealCooldownTimer = scout.revealCooldown;
             gameState.worldTextEffects.push({
@@ -438,6 +538,7 @@ export function updateScoutsAI(deltaTime) {
             });
         }
     });
+    gameState.hero.isSpotted = heroSpotted;
 }
 
 export function handleCollisionsAndDeaths() {
@@ -452,7 +553,7 @@ export function handleCollisionsAndDeaths() {
         } else {
             const distToHero = distance(scout.x, scout.y, heroCenter.x, heroCenter.y);
             if (distToHero < scout.attackRange && scout.heroAttackCooldown <= 0) {
-                gameState.hero.hp -= scout.damage;
+                applyDamageToHero(scout.damage);
                 scout.heroAttackCooldown = scout.heroAttackCooldownMax;
             }
         }
@@ -474,11 +575,20 @@ export function handleCollisionsAndDeaths() {
                         village.isUnderAttack = false;
                         if (village.heroHasHelped) {
                             gameState.hero.gold += GAME_CONFIG.villageGoldReward;
+                            let bannerText = 'Saved!';
+                            let bannerColor = 'rgba(76, 212, 76, 1)';
+                            if (village.lastDefenseStyle === 'shadow') {
+                                bannerText = 'Shadow Ambush!';
+                                bannerColor = 'rgba(140, 240, 220, 1)';
+                            } else if (village.lastDefenseStyle === 'skirmish') {
+                                bannerText = 'Skirmish Stand!';
+                                bannerColor = 'rgba(255, 205, 130, 1)';
+                            }
                             gameState.worldTextEffects.push({
-                                text: 'Saved!',
+                                text: bannerText,
                                 x: village.x,
                                 y: village.y - 20,
-                                color: 'rgba(76, 212, 76, 1)',
+                                color: bannerColor,
                                 font: 'bold 24px MedievalSharp',
                                 lifespan: 2
                             });
@@ -501,6 +611,7 @@ export function handleCollisionsAndDeaths() {
                             });
                         }
                         village.heroHasHelped = false;
+                        village.lastDefenseStyle = null;
                     }
                 }
             });

@@ -60,11 +60,69 @@ export const SHOP = {
     interactionRadius: 150
 };
 
-export const SHOP_ITEMS = [
-    { id: 'dmg1', name: 'Sharpen Blade', cost: 150, effect: { stat: 'attackDamage', value: 5 }, description: '+5 Damage', icon: '⚔️' },
-    { id: 'spd1', name: 'Swift Boots', cost: 200, effect: { stat: 'speed', value: 0.5 }, description: '+0.5 Speed', icon: '👢' },
-    { id: 'aspd1', name: 'Quick Gloves', cost: 250, effect: { stat: 'attackCooldown', value: -0.1 }, description: '-0.1s Atk Time', icon: '🧤' },
-    { id: 'hp1', name: 'Tough Jerky', cost: 100, effect: { stat: 'maxHp', value: 25 }, description: '+25 Max HP', icon: '🍖' }
+export const SHOP_BUILDS = [
+    {
+        id: 'shadow',
+        name: 'Shadow',
+        summary: 'Cloak+, Quiet Sprint, Backstab Bonus',
+        items: [
+            {
+                id: 'shadow-cloak',
+                name: 'Cloak+',
+                cost: 220,
+                effect: { type: 'stealth', value: 0.3 },
+                description: 'Reduce scout sight range by 30% while hidden.',
+                icon: '🕶️'
+            },
+            {
+                id: 'shadow-sprint',
+                name: 'Quiet Sprint',
+                cost: 210,
+                effect: { type: 'quietSprint', value: 1.2 },
+                description: '+1.2 Speed when unseen.',
+                icon: '👟'
+            },
+            {
+                id: 'shadow-backstab',
+                name: 'Backstab Bonus',
+                cost: 260,
+                effect: { type: 'backstab', value: 0.75 },
+                description: 'Unseen hits deal +75% damage.',
+                icon: '🗡️'
+            }
+        ]
+    },
+    {
+        id: 'skirmish',
+        name: 'Skirmish',
+        summary: 'Dagger+, Parry, Stamina Burst',
+        items: [
+            {
+                id: 'skirmish-dagger',
+                name: 'Dagger+',
+                cost: 180,
+                effect: { type: 'stat', stats: [{ stat: 'attackDamage', value: 7 }] },
+                description: '+7 Damage for quick strikes.',
+                icon: '⚔️'
+            },
+            {
+                id: 'skirmish-parry',
+                name: 'Parry',
+                cost: 230,
+                effect: { type: 'damageMitigation', value: 0.25 },
+                description: 'Reduce incoming damage by 25%.',
+                icon: '🛡️'
+            },
+            {
+                id: 'skirmish-stamina',
+                name: 'Stamina Burst',
+                cost: 240,
+                effect: { type: 'staminaBurst', bonus: 0.35, duration: 4 },
+                description: 'Kills grant +35% attack speed for 4s.',
+                icon: '💥'
+            }
+        ]
+    }
 ];
 
 export const MINION_TYPES = {
