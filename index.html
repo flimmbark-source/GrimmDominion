@@ -30,6 +30,17 @@
                     </div>
                     <span id="heroHealthText" class="font-bold text-sm w-24 text-center">100/100</span>
                 </div>
+                <div class="flex items-center space-x-2 w-full">
+                    <span class="font-medieval text-lg text-red-400">Detection</span>
+                    <div class="flex-grow h-3 rounded-md detection-bar-bg">
+                        <div id="detectionBarFill" class="h-full rounded-sm detection-bar-fill"></div>
+                    </div>
+                    <span id="detectionText" class="font-bold text-sm w-24 text-center text-red-200">Hidden</span>
+                </div>
+                <div class="flex items-center justify-between w-full text-xs text-gray-400">
+                    <span>Watchers: <span id="detectionWatchers">0</span></span>
+                    <span id="detectionNoiseStatus">Quiet</span>
+                </div>
             </div>
             <div id="inventoryPanel" class="ui-panel p-2 rounded-lg grid grid-cols-6 gap-2"></div>
         </div>

@@ -1,4 +1,4 @@
-import { GAME_CONFIG, MILITIA_STATS, SCOUT_STATS } from './constants.js';
+import { GAME_CONFIG, MILITIA_STATS, SCOUT_STATS, DETECTION_CONFIG, NOISE_CONFIG } from './constants.js';
 import { gameState } from './state.js';
 import { distance, isPointInRect } from './utils.js';
 
@@ -14,17 +14,70 @@ function canScoutSeeHero(scout) {
     return !heroInForest;
 }
 
+function pickPatrolDestination(scout) {
+    scout.targetX = scout.patrolCenterX + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
+    scout.targetY = scout.patrolCenterY + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
+}
+
+function emitNoiseAt(x, y, strength) {
+    const ping = {
+        id: Math.random(),
+        x,
+        y,
+        strength,
+        ttl: NOISE_CONFIG.pingLifetime,
+        age: 0
+    };
+    gameState.noisePings.push(ping);
+    gameState.detection.noiseEchoTimer = DETECTION_CONFIG.noiseUiEchoTime;
+}
+
+function selectNoisePingForScout(scout) {
+    let selected = null;
+    let bestWeight = 0;
+    for (const ping of gameState.noisePings) {
+        const dist = distance(scout.x, scout.y, ping.x, ping.y);
+        const weight = ping.strength / (1 + dist / NOISE_CONFIG.attractionRadius);
+        if (weight > bestWeight) {
+            bestWeight = weight;
+            selected = ping;
+        }
+    }
+    if (selected && bestWeight >= NOISE_CONFIG.attractionThreshold) {
+        return selected;
+    }
+    return null;
+}
+
 export function updateHero(deltaTime) {
     const dx = gameState.hero.targetX - gameState.hero.x;
     const dy = gameState.hero.targetY - gameState.hero.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > gameState.hero.speed) {
-        gameState.hero.x += (dx / dist) * gameState.hero.speed;
-        gameState.hero.y += (dy / dist) * gameState.hero.speed;
+    const moveSpeed = gameState.hero.speed * (gameState.hero.isSprinting ? gameState.hero.sprintMultiplier : 1);
+    if (dist > moveSpeed) {
+        gameState.hero.x += (dx / dist) * moveSpeed;
+        gameState.hero.y += (dy / dist) * moveSpeed;
     }
 
     gameState.hero.x = Math.max(0, Math.min(gameState.world.width - gameState.hero.width, gameState.hero.x));
     gameState.hero.y = Math.max(0, Math.min(gameState.world.height - gameState.hero.height, gameState.hero.y));
+
+    if (gameState.hero.isSprinting) {
+        gameState.hero.sprintNoiseTimer -= deltaTime;
+        if (gameState.hero.sprintNoiseTimer <= 0) {
+            emitNoiseAt(
+                gameState.hero.x + gameState.hero.width / 2,
+                gameState.hero.y + gameState.hero.height / 2,
+                NOISE_CONFIG.sprintStrength
+            );
+            gameState.hero.sprintNoiseTimer = gameState.hero.sprintNoiseInterval;
+        }
+    } else {
+        gameState.hero.sprintNoiseTimer = Math.max(
+            0,
+            Math.min(gameState.hero.sprintNoiseTimer, gameState.hero.sprintNoiseInterval)
+        );
+    }
 
     gameState.hero.attackTimer -= deltaTime;
     if (gameState.hero.attackTimer <= 0) {
@@ -45,6 +98,11 @@ export function updateHero(deltaTime) {
                 targetId: nearestScout.scout.id
             });
             gameState.hero.attackTimer = gameState.hero.attackCooldown;
+            emitNoiseAt(
+                gameState.hero.x + gameState.hero.width / 2,
+                gameState.hero.y + gameState.hero.height / 2,
+                NOISE_CONFIG.attackStrength
+            );
         }
     }
 }
@@ -113,13 +171,46 @@ export function updateProjectiles(projectiles, speed, damage, owner) {
 }
 
 export function updateScoutsAI(deltaTime) {
+    for (let i = gameState.noisePings.length - 1; i >= 0; i -= 1) {
+        const ping = gameState.noisePings[i];
+        ping.age += deltaTime;
+        ping.ttl -= deltaTime;
+        if (ping.ttl <= 0) {
+            gameState.noisePings.splice(i, 1);
+        }
+    }
+
+    gameState.detection.noiseEchoTimer = Math.max(0, gameState.detection.noiseEchoTimer - deltaTime);
+
+    let watchers = 0;
+
     gameState.scouts.forEach((scout) => {
         scout.villageAttackCooldown -= deltaTime;
         scout.heroAttackCooldown -= deltaTime;
 
-        if (scout.state === 'PATROLLING') {
-            if (canScoutSeeHero(scout)) {
+        const seesHero = canScoutSeeHero(scout);
+        if (seesHero) {
+            watchers += 1;
+            scout.lostSightTimer = SCOUT_STATS.lostSightTolerance;
+            if (scout.state !== 'CHASING') {
                 scout.state = 'CHASING';
+                scout.noiseTarget = null;
+            }
+        } else if (scout.state === 'CHASING') {
+            scout.lostSightTimer -= deltaTime;
+            if (scout.lostSightTimer <= 0) {
+                scout.state = 'PATROLLING';
+                scout.noiseTarget = null;
+                pickPatrolDestination(scout);
+            }
+        }
+
+        if (scout.state === 'PATROLLING') {
+            const noisePing = selectNoisePingForScout(scout);
+            if (noisePing) {
+                scout.state = 'INVESTIGATING_NOISE';
+                scout.noiseTarget = { id: noisePing.id, x: noisePing.x, y: noisePing.y };
+                scout.noiseDwellTimer = NOISE_CONFIG.dwellTime;
             } else {
                 for (const village of gameState.villages) {
                     const targets = [...village.villagers, ...village.huts];
@@ -141,23 +232,38 @@ export function updateScoutsAI(deltaTime) {
                     }
                 }
             }
-
-            if (scout.state !== 'PATROLLING' && !scout.isBuffed) {
-                scout.isBuffed = true;
-                scout.speed *= SCOUT_STATS.speedBuffMultiplier;
-                scout.maxHp += SCOUT_STATS.hpBuffBonus;
-                scout.hp += SCOUT_STATS.hpBuffBonus;
-                scout.color = '#ff3333';
+        } else if (scout.state === 'INVESTIGATING_NOISE') {
+            if (!scout.noiseTarget) {
+                scout.state = 'PATROLLING';
+                pickPatrolDestination(scout);
+            } else {
+                const activePing = gameState.noisePings.find((ping) => ping.id === scout.noiseTarget.id);
+                if (activePing) {
+                    scout.noiseTarget.x = activePing.x;
+                    scout.noiseTarget.y = activePing.y;
+                    scout.noiseDwellTimer = NOISE_CONFIG.dwellTime;
+                }
+                scout.targetX = scout.noiseTarget.x;
+                scout.targetY = scout.noiseTarget.y;
+                const distToNoise = distance(scout.noiseTarget.x, scout.noiseTarget.y, scout.x, scout.y);
+                if (!activePing) {
+                    scout.noiseDwellTimer -= deltaTime * 0.5;
+                }
+                if (distToNoise < NOISE_CONFIG.arrivalThreshold) {
+                    scout.noiseDwellTimer -= deltaTime;
+                }
+                if (scout.noiseDwellTimer <= 0) {
+                    scout.state = 'PATROLLING';
+                    scout.noiseTarget = null;
+                    scout.noiseDwellTimer = 0;
+                    pickPatrolDestination(scout);
+                }
             }
-        }
-
-        if (scout.state === 'CHASING') {
-            scout.targetX = gameState.hero.x;
-            scout.targetY = gameState.hero.y;
         } else if (scout.state === 'ATTACKING_VILLAGE') {
             if (!scout.villageAttackTarget || scout.villageAttackTarget.hp <= 0) {
                 scout.state = 'PATROLLING';
                 scout.villageAttackTarget = null;
+                pickPatrolDestination(scout);
             } else {
                 scout.targetX = scout.villageAttackTarget.x;
                 scout.targetY = scout.villageAttackTarget.y;
@@ -167,11 +273,23 @@ export function updateScoutsAI(deltaTime) {
                     scout.villageAttackCooldown = SCOUT_STATS.villageAttackCooldown;
                 }
             }
-        } else if (scout.state === 'PATROLLING') {
+        } else if (scout.state === 'CHASING') {
+            scout.targetX = gameState.hero.x;
+            scout.targetY = gameState.hero.y;
+        }
+
+        if (!scout.isBuffed && scout.state !== 'PATROLLING' && scout.state !== 'INVESTIGATING_NOISE') {
+            scout.isBuffed = true;
+            scout.speed *= SCOUT_STATS.speedBuffMultiplier;
+            scout.maxHp += SCOUT_STATS.hpBuffBonus;
+            scout.hp += SCOUT_STATS.hpBuffBonus;
+            scout.color = '#ff3333';
+        }
+
+        if (scout.state === 'PATROLLING') {
             const distToTarget = distance(scout.targetX, scout.targetY, scout.x, scout.y);
             if (distToTarget < 20) {
-                scout.targetX = scout.patrolCenterX + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
-                scout.targetY = scout.patrolCenterY + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
+                pickPatrolDestination(scout);
             }
         }
 
@@ -189,6 +307,26 @@ export function updateScoutsAI(deltaTime) {
             scout.y += (dy / dist) * scout.speed;
         }
     });
+
+    const detection = gameState.detection;
+    detection.watchers = watchers;
+    if (watchers > 0) {
+        detection.level = Math.min(
+            1,
+            detection.level + DETECTION_CONFIG.fillRatePerScout * watchers * deltaTime
+        );
+    } else {
+        detection.level = Math.max(0, detection.level - DETECTION_CONFIG.decayRate * deltaTime);
+    }
+
+    if (detection.level >= DETECTION_CONFIG.alertThreshold) {
+        detection.isAlert = true;
+    } else if (
+        watchers === 0 &&
+        detection.level <= (detection.resetThreshold ?? DETECTION_CONFIG.resetThreshold)
+    ) {
+        detection.isAlert = false;
+    }
 }
 
 export function handleCollisionsAndDeaths() {
