@@ -1,36 +1,46 @@
 # Grimm Dominion Prototype
 
-## Running in GitHub Codespaces
+## Run Instructions (Codespaces or Local Node)
 
 1. Install dependencies:
    ```bash
    npm install
    ```
-2. Start the development server (Codespaces will automatically forward the port):
+2. Launch the development server, which serves `index.html`, `scripts/`, and `styles/` through Express:
    ```bash
    npm start
    ```
-3. Open the forwarded URL in your browser to play the game.
+3. Open the forwarded URL (or `http://localhost:3000`) in a modern browser to play. The layout automatically resizes to the browser window.
 
-The server uses Express to serve the static game assets from `index.html`, `scripts/`, and `styles/` so the prototype runs reliably inside Codespaces.
-## Overview
-Grimm Dominion is a top-down strategy prototype where players defend the realm from encroaching Dark Lord scouts. The project currently targets **Milestone 2: Inventory Management**, focusing on core combat, village defense, and player progression loops.
+You can also serve the repository with any static file server—the build is fully client-side once assets are hosted.
 
-## Gameplay Summary
-- **Hero Control** – Click anywhere on the map to send the hero moving toward that location. The hero automatically attacks nearby scouts with ranged projectiles when they enter attack range.
-- **Dark Lord Scouts** – Scouts patrol the wilderness, rally to attack discovered villages, and chase the hero when they spot them. They gain combat buffs after engaging a target, making quick responses critical.
-- **Villages & Militia** – Villages contain huts, villagers, and militia defenders. When under attack, militia rally toward invading scouts and fire projectiles to protect their homes.
-- **Reward Loop** – Saving a village rewards the hero with gold and celebratory world text effects. Militia victories without hero aid trigger alternate messages, keeping the world reactive.
-- **Shops & Upgrades** – Approach the Secret Tavern to open the shop and purchase permanent stat upgrades that immediately populate the hero’s inventory slots.
-- **Inventory Management** – Drag and drop item icons to reorder upgrades within the hero’s inventory grid. Visual feedback tracks the dragged item and slot targets.
+## Prototype Snapshot
 
-## User Interface
-- **HUD** – Displays current gold and a dynamic health bar that updates every frame based on the hero’s stats.
-- **World Rendering** – The canvas illustrates forests, villages, the castle, the shop, active projectiles, and warning indicators for off-screen village attacks.
-- **Game Over Screen** – If the hero falls, a dedicated overlay informs the player and prompts a restart.
+Grimm Dominion is currently scoped to **Milestone 2: Inventory Management**. The build focuses on real-time defense of frontier villages, stealth-driven hero movement, and lightweight progression via loot slots and a tavern shop.【F:index.html†L14-L65】【F:scripts/state.js†L42-L137】
 
-## Running the Prototype
-This build is fully client-side. Serve the repository with any static file server or open `index.html` directly in a modern browser that supports ES modules. The game automatically adapts the canvas to the browser window and begins spawning scouts over time.
+### Core Gameplay Loop
+- **Command the hero with clicks** – Move the hero by clicking within the canvas; sprint by holding `Shift` to cover ground faster at the cost of generating extra noise for nearby scouts.【F:scripts/main.js†L29-L69】【F:scripts/constants.js†L22-L47】
+- **Ranged combat & noise** – The hero auto-fires projectiles at enemies in range and each attack creates noise pings that alert scouts; sprinting does the same, so positioning and timing matter.【F:scripts/main.js†L70-L107】【F:scripts/ai.js†L23-L73】
+- **Dynamic encounter phases** – A looping set of encounter phases modulates spawn cadence. Advancing to a new phase triggers fresh patrol waves, keeping pressure on the map.【F:scripts/state.js†L18-L109】
+- **Adaptive enemy director** – Behind the scenes, a director spends energy to spawn patrols or village raids based on current pressure, village states, and prior deployments.【F:scripts/director.js†L1-L96】
 
-## Next Steps
-Key systems already in place include hero combat, enemy AI, village defense, and item management. Future milestones can build on this foundation by expanding enemy variety, adding mission structure, or deepening economic mechanics.
+### World Threats & Objectives
+- **Village sieges** – Each village tracks huts, villagers, militia, and attackers. Losing too many structures or residents marks the village as fallen and raises the defeat counter.【F:scripts/state.js†L86-L171】【F:scripts/run-conditions.js†L119-L142】
+- **Castle probe escalation** – Scouts that reach the castle perimeter advance a probe meter; letting it fill ends the run with a special defeat state.【F:scripts/run-conditions.js†L63-L115】
+- **Run objectives** – Survive 15 minutes, save at least three villages, and keep losses under two to secure victory before the hard 18-minute fail state triggers.【F:scripts/run-conditions.js†L1-L62】【F:scripts/constants.js†L120-L133】
+- **Summary overlay** – A dedicated game-over panel details survival time, villages saved/lost, probe progress, and offers a one-click restart.【F:index.html†L66-L123】【F:scripts/run-conditions.js†L15-L62】
+
+### Progression & Interface
+- **Secret Tavern shop** – Enter the tavern’s radius to open a modal shop stocked with permanent stat upgrades; purchases populate inventory slots immediately.【F:index.html†L90-L102】【F:scripts/state.js†L42-L137】
+- **Inventory management** – Drag-and-drop slots let you reorder upgrades. The UI reflects equipped bonuses in gold, health, and detection meters on the HUD.【F:index.html†L38-L89】【F:scripts/main.js†L110-L148】
+- **Militia support** – Villages spawn militia archers that patrol, shoot raiding enemies, and fire their own projectiles with distinct stats to assist your defense.【F:scripts/state.js†L118-L171】【F:scripts/constants.js†L70-L116】
+
+## Project Structure
+- `index.html` renders the canvas, HUD overlays, shop modal, and game-over summary.
+- `scripts/` contains modular systems for AI, rendering, UI, director logic, drag-and-drop inventory, and run conditions.
+- `styles/` holds Tailwind-driven overrides and custom CSS for the medieval HUD.
+- `server.js` exposes a minimal Express server used for local development.
+
+## Roadmap Considerations
+
+Future milestones can expand on this foundation by deepening enemy rosters, adding narrative-driven missions, and enriching the economy beyond the initial tavern offerings.
