@@ -17,6 +17,14 @@
     <div id="gameContainer" class="w-full max-w-5xl mx-auto flex-grow relative rounded-lg overflow-hidden">
         <canvas id="gameCanvas"></canvas>
 
+        <div class="absolute top-4 right-4 flex flex-col items-end space-y-2">
+            <div id="phasePanel" class="ui-panel phase-panel p-3 rounded-lg text-right">
+                <div class="text-xs uppercase tracking-widest text-gray-400">Phase</div>
+                <div id="phaseName" class="font-medieval text-2xl text-phase-accent">Calm</div>
+                <div id="phaseTimer" class="text-sm text-gray-300">00:00</div>
+            </div>
+        </div>
+
         <div class="absolute bottom-4 left-4 flex items-end space-x-2">
             <div class="ui-panel p-2 rounded-lg flex flex-col space-y-2" style="width: 250px;">
                 <div class="flex items-center space-x-2 w-full">

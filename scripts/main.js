@@ -9,6 +9,13 @@ import { updateCamera } from './camera.js';
 import { draw } from './render.js';
 import { initializeDirector, updateDirector } from './director.js';
 
+function spawnScoutsForPhase() {
+    const phase = getCurrentEncounterPhase();
+    for (let i = 0; i < phase.spawnCount; i += 1) {
+        spawnScout();
+    }
+}
+
 function resizeCanvas() {
     const container = document.getElementById('gameContainer');
     const canvas = gameState.canvas;
@@ -54,6 +61,7 @@ function gameLoop(timestamp) {
     const deltaTime = (timestamp - lastTimestamp) / 1000;
     lastTimestamp = timestamp;
 
+    updateEncounterPhase(deltaTime);
     updateHero(deltaTime);
     updateScoutsAI(deltaTime);
     updateMilitiaAI(deltaTime);
