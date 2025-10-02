@@ -12,7 +12,8 @@ import {
     VILLAGERS_PER_VILLAGE,
     MILITIA_PER_VILLAGE,
     MILITIA_STATS,
-    MINION_TYPES
+    MINION_TYPES,
+    SCOUT_STATS
 } from './constants.js';
 
 export const gameState = {
@@ -32,7 +33,9 @@ export const gameState = {
     worldTextEffects: [],
     spawnTimer: 0,
     director: null,
-    gameOver: false
+    gameOver: false,
+    noisePings: [],
+    noisePingIdCounter: 0
 };
 
 function clamp(value, min, max) {
@@ -46,7 +49,9 @@ function createHero() {
         targetY: HERO_BASE_STATS.y,
         attackTimer: 0,
         revealTimer: 0,
-        inventory: new Array(GAME_CONFIG.inventorySize).fill(null)
+        inventory: new Array(GAME_CONFIG.inventorySize).fill(null),
+        isSprinting: false,
+        noiseCooldown: 0
     };
 }
 
@@ -130,6 +135,8 @@ export function initializeGameState(canvas) {
     gameState.militiaProjectiles = [];
     gameState.worldTextEffects = [];
     gameState.director = null;
+    gameState.noisePings = [];
+    gameState.noisePingIdCounter = 0;
     cloneShopItems();
 }
 
@@ -223,4 +230,25 @@ export function createMinion(role = 'scout') {
         speedBuffMultiplier: config.speedBuffMultiplier ?? 1,
         hpBuffBonus: config.hpBuffBonus ?? 0
     };
+}
+
+export function getDetectionThreat() {
+    let highest = 0;
+    gameState.scouts.forEach((scout) => {
+        if (typeof scout.detectionLevel === 'number' && scout.detectionLevel > highest) {
+            highest = scout.detectionLevel;
+        }
+    });
+    highest = Math.max(0, Math.min(1, highest));
+    let label = 'Hidden';
+    if (highest >= 1) {
+        label = 'Spotted';
+    } else if (highest >= 0.75) {
+        label = 'Compromised';
+    } else if (highest >= 0.5) {
+        label = 'Hunted';
+    } else if (highest > 0.25) {
+        label = 'Suspicious';
+    }
+    return { level: highest, label };
 }

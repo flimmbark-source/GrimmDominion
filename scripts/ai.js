@@ -1,4 +1,4 @@
-import { GAME_CONFIG, MILITIA_STATS } from './constants.js';
+import { GAME_CONFIG, MILITIA_STATS, SCOUT_STATS, MINION_TYPES } from './constants.js';
 import { gameState } from './state.js';
 import { distance, isPointInRect } from './utils.js';
 
@@ -9,15 +9,176 @@ function getHeroCenter() {
     };
 }
 
-function canMinionSeeHero(minion) {
-    const heroCenter = getHeroCenter();
-    const distToHero = distance(heroCenter.x, heroCenter.y, minion.x, minion.y);
-    if (distToHero <= minion.criticalSightRange) {
-        return true;
+function normalizeAngle(angle) {
+    let result = angle;
+    while (result <= -Math.PI) {
+        result += Math.PI * 2;
     }
+    while (result > Math.PI) {
+        result -= Math.PI * 2;
+    }
+    return result;
+}
+
+function angleDifference(a, b) {
+    return Math.abs(normalizeAngle(a - b));
+}
+
+function emitNoisePing(x, y, radius, intensity = 1, lifespan = 1.5) {
+    gameState.noisePingIdCounter += 1;
+    gameState.noisePings.push({
+        id: gameState.noisePingIdCounter,
+        x,
+        y,
+        radius,
+        intensity,
+        lifespan,
+        age: 0
+    });
+}
+
+function updateNoisePings(deltaTime) {
+    for (let i = gameState.noisePings.length - 1; i >= 0; i -= 1) {
+        const ping = gameState.noisePings[i];
+        ping.age += deltaTime;
+        if (ping.age >= ping.lifespan) {
+            gameState.noisePings.splice(i, 1);
+        }
+    }
+}
+
+function findNoiseTargetForScout(scout) {
+    let best = null;
+    let bestScore = Infinity;
+    gameState.noisePings.forEach((ping) => {
+        const dist = distance(ping.x, ping.y, scout.x, scout.y);
+        if (dist > ping.radius) {
+            return;
+        }
+        const remaining = Math.max(0.1, ping.lifespan - ping.age);
+        const score = dist / (ping.intensity * remaining);
+        if (score < bestScore) {
+            bestScore = score;
+            best = ping;
+        }
+    });
+    return best;
+}
+
+function updateScoutDetection(scout, heroCenter, deltaTime) {
+    scout.detectionLevel = Math.max(0, Math.min(1, scout.detectionLevel ?? 0));
+    const heroVisible = canMinionSeeHero(scout, heroCenter);
+    if (heroVisible) {
+        let gain = scout.detectionRate ?? 1;
+        const dist = distance(heroCenter.x, heroCenter.y, scout.x, scout.y);
+        if (dist <= scout.criticalSightRange) {
+            gain *= 2.4;
+        } else {
+            const proximity = 1 - dist / scout.sightRange;
+            gain *= Math.max(0.35, proximity);
+        }
+        scout.detectionLevel = Math.min(1, scout.detectionLevel + gain * deltaTime);
+        scout.lastKnownHeroX = heroCenter.x;
+        scout.lastKnownHeroY = heroCenter.y;
+    } else {
+        const decay = scout.state === 'CHASING' ? scout.detectionLoseRate : scout.detectionDecayRate;
+        if (decay) {
+            scout.detectionLevel = Math.max(0, scout.detectionLevel - decay * deltaTime);
+        } else {
+            scout.detectionLevel = 0;
+        }
+    }
+    return heroVisible;
+}
+
+function ensureScoutAwarenessDefaults(scout) {
+    const baseConfig = MINION_TYPES[scout.role] || MINION_TYPES.scout;
+    if (typeof scout.sightRange !== 'number') {
+        scout.sightRange = baseConfig.sightRange;
+    }
+    if (typeof scout.criticalSightRange !== 'number') {
+        scout.criticalSightRange = baseConfig.criticalSightRange;
+    }
+    if (typeof scout.visionCone !== 'number') {
+        scout.visionCone = baseConfig.visionCone;
+    }
+    if (typeof scout.detectionRate !== 'number') {
+        scout.detectionRate = baseConfig.detectionRate ?? 1;
+    }
+    if (typeof scout.detectionDecayRate !== 'number') {
+        scout.detectionDecayRate = baseConfig.detectionDecay ?? 0.5;
+    }
+    if (typeof scout.detectionLoseRate !== 'number') {
+        scout.detectionLoseRate = baseConfig.detectionLoseRate ?? 1.2;
+    }
+    if (typeof scout.searchDuration !== 'number') {
+        scout.searchDuration = 2.5;
+    }
+    if (typeof scout.detectionLevel !== 'number') {
+        scout.detectionLevel = 0;
+    }
+    if (typeof scout.noiseInvestigationTimer !== 'number') {
+        scout.noiseInvestigationTimer = 0;
+    }
+    if (typeof scout.facingAngle !== 'number') {
+        scout.facingAngle = Math.random() * Math.PI * 2;
+    }
+    if (typeof scout.patrolCenterX !== 'number') {
+        scout.patrolCenterX = scout.x;
+    }
+    if (typeof scout.patrolCenterY !== 'number') {
+        scout.patrolCenterY = scout.y;
+    }
+    if (typeof scout.targetX !== 'number') {
+        scout.targetX = scout.x;
+    }
+    if (typeof scout.targetY !== 'number') {
+        scout.targetY = scout.y;
+    }
+    if (typeof scout.currentNoiseId === 'undefined') {
+        scout.currentNoiseId = null;
+    }
+}
+
+function resetScoutToPatrol(scout) {
+    scout.state = 'PATROLLING';
+    scout.currentNoiseId = null;
+    scout.noiseInvestigationTimer = 0;
+    scout.searchTimer = 0;
+    scout.detectionLevel = 0;
+    const baseConfig = MINION_TYPES[scout.role] || MINION_TYPES.scout;
+    const patrolRadius = baseConfig.patrolRadius ?? SCOUT_STATS.patrolRadius;
+    scout.targetX = Math.max(
+        0,
+        Math.min(gameState.world.width, scout.patrolCenterX + (Math.random() - 0.5) * 2 * patrolRadius)
+    );
+    scout.targetY = Math.max(
+        0,
+        Math.min(gameState.world.height, scout.patrolCenterY + (Math.random() - 0.5) * 2 * patrolRadius)
+    );
+    scout.lastKnownHeroX = null;
+    scout.lastKnownHeroY = null;
+}
+
+function canMinionSeeHero(minion, heroCenter = getHeroCenter()) {
+    const distToHero = distance(heroCenter.x, heroCenter.y, minion.x, minion.y);
     if (distToHero > minion.sightRange) {
         return false;
     }
+    if (distToHero <= minion.criticalSightRange) {
+        return true;
+    }
+
+    if (minion.visionCone) {
+        const angleToHero = Math.atan2(heroCenter.y - minion.y, heroCenter.x - minion.x);
+        const facing = typeof minion.facingAngle === 'number' ? minion.facingAngle : angleToHero;
+        const coneMultiplier = minion.state === 'CHASING' ? 1.2 : 1;
+        const coneHalf = (minion.visionCone * coneMultiplier) / 2;
+        if (angleDifference(angleToHero, facing) > coneHalf) {
+            return false;
+        }
+    }
+
     const heroInForest = gameState.forests.some((forest) => isPointInRect(gameState.hero, forest));
     return !heroInForest;
 }
@@ -126,13 +287,26 @@ function performTankSwing(tank) {
 
 export function updateHero(deltaTime) {
     gameState.hero.revealTimer = Math.max(0, gameState.hero.revealTimer - deltaTime);
+    gameState.hero.noiseCooldown = Math.max(0, gameState.hero.noiseCooldown - deltaTime);
 
     const dx = gameState.hero.targetX - gameState.hero.x;
     const dy = gameState.hero.targetY - gameState.hero.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > gameState.hero.speed) {
-        gameState.hero.x += (dx / dist) * gameState.hero.speed;
-        gameState.hero.y += (dy / dist) * gameState.hero.speed;
+    const sprinting = gameState.hero.isSprinting && dist > 0.1;
+    const moveSpeed = gameState.hero.speed * (sprinting ? gameState.hero.sprintMultiplier : 1);
+    if (dist > moveSpeed) {
+        const nx = dx / dist;
+        const ny = dy / dist;
+        gameState.hero.x += nx * moveSpeed;
+        gameState.hero.y += ny * moveSpeed;
+        if (sprinting && gameState.hero.noiseCooldown <= 0) {
+            const center = getHeroCenter();
+            emitNoisePing(center.x, center.y, gameState.hero.sprintNoiseRadius, 0.6, 1.1);
+            gameState.hero.noiseCooldown = gameState.hero.sprintNoiseCooldown;
+        }
+    } else if (dist > 0) {
+        gameState.hero.x = gameState.hero.targetX;
+        gameState.hero.y = gameState.hero.targetY;
     }
 
     gameState.hero.x = Math.max(0, Math.min(gameState.world.width - gameState.hero.width, gameState.hero.x));
@@ -157,6 +331,8 @@ export function updateHero(deltaTime) {
                 targetId: nearestScout.scout.id
             });
             gameState.hero.attackTimer = gameState.hero.attackCooldown;
+            const center = getHeroCenter();
+            emitNoisePing(center.x, center.y, gameState.hero.attackNoiseRadius, 1.2, 1.8);
         }
     }
 }
@@ -231,7 +407,9 @@ export function updateProjectiles(projectiles, speed, damage, owner) {
 
 export function updateScoutsAI(deltaTime) {
     const heroCenter = getHeroCenter();
+    updateNoisePings(deltaTime);
     gameState.scouts.forEach((scout) => {
+        ensureScoutAwarenessDefaults(scout);
         scout.villageAttackCooldown -= deltaTime;
         scout.heroAttackCooldown -= deltaTime;
         if (typeof scout.healCooldownTimer === 'number') {
@@ -240,6 +418,8 @@ export function updateScoutsAI(deltaTime) {
         if (typeof scout.revealCooldownTimer === 'number') {
             scout.revealCooldownTimer -= deltaTime;
         }
+
+        const heroVisible = updateScoutDetection(scout, heroCenter, deltaTime);
 
         if (scout.assignment === 'RAID' && scout.state === 'PATROLLING') {
             const targetVillage = scout.targetVillageId
@@ -270,8 +450,10 @@ export function updateScoutsAI(deltaTime) {
         }
 
         if (scout.state === 'PATROLLING') {
-            if (canMinionSeeHero(scout)) {
+            if (scout.detectionLevel >= 1) {
                 scout.state = 'CHASING';
+                scout.currentNoiseId = null;
+                scout.noiseInvestigationTimer = 0;
             } else {
                 for (const village of gameState.villages) {
                     const targets =
@@ -297,14 +479,46 @@ export function updateScoutsAI(deltaTime) {
                     }
                 }
             }
+        }
 
-            if (scout.state !== 'PATROLLING' && !scout.isBuffed && scout.speedBuffMultiplier > 1) {
-                scout.isBuffed = true;
-                scout.speed *= scout.speedBuffMultiplier;
-                scout.maxHp += scout.hpBuffBonus;
-                scout.hp += scout.hpBuffBonus;
-                scout.color = '#ff3333';
+        if (scout.state !== 'PATROLLING' && scout.detectionLevel >= 1 && scout.state !== 'CHASING') {
+            scout.state = 'CHASING';
+            scout.currentNoiseId = null;
+            scout.noiseInvestigationTimer = 0;
+        }
+
+        if (scout.state === 'CHASING' && scout.detectionLevel <= 0 && !heroVisible) {
+            scout.state = 'SEARCHING';
+            scout.searchTimer = scout.searchDuration;
+            if (typeof scout.lastKnownHeroX === 'number' && typeof scout.lastKnownHeroY === 'number') {
+                scout.targetX = scout.lastKnownHeroX;
+                scout.targetY = scout.lastKnownHeroY;
             }
+        }
+
+        if (!heroVisible && scout.state !== 'CHASING' && scout.state !== 'ATTACKING_VILLAGE') {
+            scout.noiseInvestigationTimer -= deltaTime;
+            const noise = findNoiseTargetForScout(scout);
+            if (
+                noise &&
+                scout.detectionLevel < 1 &&
+                scout.state !== 'SEARCHING' &&
+                (scout.currentNoiseId !== noise.id || scout.noiseInvestigationTimer <= 0)
+            ) {
+                scout.currentNoiseId = noise.id;
+                scout.state = 'INVESTIGATING_NOISE';
+                scout.noiseInvestigationTimer = noise.lifespan - noise.age + 1.5;
+                scout.targetX = noise.x;
+                scout.targetY = noise.y;
+            }
+        }
+
+        if (scout.state !== 'PATROLLING' && !scout.isBuffed && scout.speedBuffMultiplier > 1) {
+            scout.isBuffed = true;
+            scout.speed *= scout.speedBuffMultiplier;
+            scout.maxHp += scout.hpBuffBonus;
+            scout.hp += scout.hpBuffBonus;
+            scout.color = '#ff3333';
         }
 
         if (scout.state === 'CHASING') {
@@ -317,9 +531,18 @@ export function updateScoutsAI(deltaTime) {
                 scout.targetX = gameState.hero.x;
                 scout.targetY = gameState.hero.y;
             }
+        } else if (scout.state === 'SEARCHING') {
+            scout.searchTimer -= deltaTime;
+            if (scout.searchTimer <= 0) {
+                resetScoutToPatrol(scout);
+            }
+        } else if (scout.state === 'INVESTIGATING_NOISE') {
+            if (scout.noiseInvestigationTimer <= 0) {
+                resetScoutToPatrol(scout);
+            }
         } else if (scout.state === 'ATTACKING_VILLAGE') {
             if (!scout.villageAttackTarget || scout.villageAttackTarget.hp <= 0) {
-                scout.state = 'PATROLLING';
+                resetScoutToPatrol(scout);
                 scout.villageAttackTarget = null;
                 scout.assignment = 'PATROL';
                 scout.targetVillageId = null;
@@ -340,7 +563,9 @@ export function updateScoutsAI(deltaTime) {
                     scout.villageAttackCooldown = scout.villageAttackCooldownMax;
                 }
             }
-        } else if (scout.state === 'PATROLLING') {
+        }
+
+        if (scout.state === 'PATROLLING') {
             const distToTarget = distance(scout.targetX, scout.targetY, scout.x, scout.y);
             if (distToTarget < 20) {
                 if (scout.assignment === 'RAID') {
@@ -367,6 +592,16 @@ export function updateScoutsAI(deltaTime) {
                     scout.targetY = scout.patrolCenterY + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
                 }
             }
+        } else if (scout.state === 'SEARCHING') {
+            const distToSearch = distance(scout.targetX, scout.targetY, scout.x, scout.y);
+            if (distToSearch < 25) {
+                resetScoutToPatrol(scout);
+            }
+        } else if (scout.state === 'INVESTIGATING_NOISE') {
+            const distToNoise = distance(scout.targetX, scout.targetY, scout.x, scout.y);
+            if (distToNoise < 30) {
+                resetScoutToPatrol(scout);
+            }
         }
 
         const dx = scout.targetX - scout.x;
@@ -379,8 +614,11 @@ export function updateScoutsAI(deltaTime) {
         }
 
         if (dist > scout.speed && shouldMove) {
-            scout.x += (dx / dist) * scout.speed;
-            scout.y += (dy / dist) * scout.speed;
+            const nx = dx / dist;
+            const ny = dy / dist;
+            scout.x += nx * scout.speed;
+            scout.y += ny * scout.speed;
+            scout.facingAngle = Math.atan2(ny, nx);
         }
 
         if (
@@ -424,7 +662,7 @@ export function updateScoutsAI(deltaTime) {
             scout.revealDuration &&
             scout.revealCooldown &&
             scout.revealCooldownTimer <= 0 &&
-            canMinionSeeHero(scout)
+            heroVisible
         ) {
             gameState.hero.revealTimer = Math.max(gameState.hero.revealTimer, scout.revealDuration);
             scout.revealCooldownTimer = scout.revealCooldown;
