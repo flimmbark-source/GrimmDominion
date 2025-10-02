@@ -4,6 +4,7 @@ import {
     CASTLE,
     SHOP,
     SHOP_ITEMS,
+    SHOP_BUILDS,
     HERO_BASE_STATS,
     GAME_CONFIG,
     FOREST_COUNT,
@@ -24,6 +25,8 @@ export const gameState = {
     hero: null,
     shop: { ...SHOP },
     shopItems: SHOP_ITEMS,
+    shopBuilds: SHOP_BUILDS,
+    selectedShopBuildId: null,
     scouts: [],
     projectiles: [],
     militiaProjectiles: [],
@@ -37,10 +40,24 @@ export const gameState = {
 function createHero() {
     return {
         ...HERO_BASE_STATS,
+        baseSpeed: HERO_BASE_STATS.speed,
+        baseAttackDamage: HERO_BASE_STATS.attackDamage,
+        baseAttackCooldown: HERO_BASE_STATS.attackCooldown,
         targetX: HERO_BASE_STATS.x,
         targetY: HERO_BASE_STATS.y,
         attackTimer: 0,
-        inventory: new Array(GAME_CONFIG.inventorySize).fill(null)
+        inventory: new Array(GAME_CONFIG.inventorySize).fill(null),
+        buildPath: null,
+        stealthDetectionMultiplier: 1,
+        quietSprintBonus: 0,
+        backstabMultiplier: 1,
+        backstabbedTargets: new Set(),
+        parryReduction: 0,
+        attackCooldownModifier: 0,
+        staminaBurstBonus: 0,
+        staminaBurstDuration: 0,
+        staminaBurstTimer: 0,
+        isShadowStealthed: false
     };
 }
 
@@ -124,6 +141,8 @@ export function initializeGameState(canvas) {
     gameState.militiaProjectiles = [];
     gameState.worldTextEffects = [];
     cloneShopItems();
+    cloneShopBuilds();
+    gameState.selectedShopBuildId = null;
 }
 
 export function resetHeroTarget() {
@@ -133,6 +152,13 @@ export function resetHeroTarget() {
 
 export function cloneShopItems() {
     gameState.shopItems = SHOP_ITEMS.map((item) => ({ ...item, effect: { ...item.effect } }));
+}
+
+export function cloneShopBuilds() {
+    gameState.shopBuilds = SHOP_BUILDS.map((build) => ({
+        ...build,
+        items: build.items.map((item) => ({ ...item, effect: { ...item.effect } }))
+    }));
 }
 
 export function createScout() {
@@ -153,6 +179,7 @@ export function createScout() {
         patrolCenterY: Math.random() * WORLD.height,
         villageAttackTarget: null,
         villageAttackCooldown: 0,
-        heroAttackCooldown: 0
+        heroAttackCooldown: 0,
+        lastHitBy: null
     };
 }

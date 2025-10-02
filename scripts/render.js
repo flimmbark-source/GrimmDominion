@@ -86,12 +86,15 @@ export function draw() {
 
     gameState.scouts.forEach((scout) => {
         if (scout.state === 'PATROLLING') {
+            const stealthMultiplier = Math.max(0.2, gameState.hero.stealthDetectionMultiplier);
+            const detectionRange = SCOUT_STATS.sightRange * stealthMultiplier;
+            const criticalRange = SCOUT_STATS.criticalSightRange * Math.min(1, stealthMultiplier);
             ctx.beginPath();
-            ctx.arc(scout.x, scout.y, SCOUT_STATS.sightRange, 0, Math.PI * 2);
+            ctx.arc(scout.x, scout.y, detectionRange, 0, Math.PI * 2);
             ctx.strokeStyle = 'rgba(255, 255, 0, 0.1)';
             ctx.stroke();
             ctx.beginPath();
-            ctx.arc(scout.x, scout.y, SCOUT_STATS.criticalSightRange, 0, Math.PI * 2);
+            ctx.arc(scout.x, scout.y, criticalRange, 0, Math.PI * 2);
             ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
             ctx.fill();
         }
