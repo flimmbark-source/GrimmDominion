@@ -1,4 +1,4 @@
-import { gameState } from './state.js';
+import { gameState, getEncounterPhaseStatus } from './state.js';
 import { updateShopButtons } from './shop.js';
 
 export function createInventorySlots() {
@@ -46,6 +46,9 @@ export function updateUI() {
     const healthText = document.getElementById('heroHealthText');
     const goldText = document.getElementById('heroGoldText');
     const shopPanel = document.getElementById('shopPanel');
+    const phaseName = document.getElementById('phaseName');
+    const phaseTimer = document.getElementById('phaseTimer');
+    const phaseAccent = document.getElementById('phasePanel');
 
     healthBar.style.width = `${(gameState.hero.hp / gameState.hero.maxHp) * 100}%`;
     healthText.textContent = `${Math.ceil(gameState.hero.hp)}/${Math.ceil(gameState.hero.maxHp)}`;
@@ -60,5 +63,16 @@ export function updateUI() {
         updateShopButtons();
     } else {
         shopPanel.classList.add('hidden');
+    }
+
+    if (phaseName && phaseTimer && phaseAccent) {
+        const { phase, remaining } = getEncounterPhaseStatus();
+        phaseName.textContent = phase.name;
+        phaseAccent.style.setProperty('--phase-accent', phase.accentColor);
+        const minutes = Math.floor(remaining / 60);
+        const seconds = Math.floor(remaining % 60)
+            .toString()
+            .padStart(2, '0');
+        phaseTimer.textContent = `${minutes}:${seconds}`;
     }
 }

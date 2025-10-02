@@ -1,5 +1,12 @@
-import { GAME_CONFIG, MILITIA_PROJECTILE_SPEED, MILITIA_STATS } from './constants.js';
-import { gameState, initializeGameState, resetHeroTarget, createScout } from './state.js';
+import { MILITIA_PROJECTILE_SPEED, MILITIA_STATS } from './constants.js';
+import {
+    gameState,
+    initializeGameState,
+    resetHeroTarget,
+    createScout,
+    updateEncounterPhase,
+    getCurrentEncounterPhase
+} from './state.js';
 import { setupShop } from './shop.js';
 import { createInventorySlots, drawInventory, updateUI } from './ui.js';
 import { setupDragAndDrop, isDraggingItem, updateDraggedIconPosition } from './drag-drop.js';
@@ -10,6 +17,13 @@ import { draw } from './render.js';
 
 function spawnScout() {
     gameState.scouts.push(createScout());
+}
+
+function spawnScoutsForPhase() {
+    const phase = getCurrentEncounterPhase();
+    for (let i = 0; i < phase.spawnCount; i += 1) {
+        spawnScout();
+    }
 }
 
 function resizeCanvas() {
@@ -57,6 +71,7 @@ function gameLoop(timestamp) {
     const deltaTime = (timestamp - lastTimestamp) / 1000;
     lastTimestamp = timestamp;
 
+    updateEncounterPhase(deltaTime);
     updateHero(deltaTime);
     updateScoutsAI(deltaTime);
     updateMilitiaAI(deltaTime);
@@ -71,9 +86,9 @@ function gameLoop(timestamp) {
     updateWorldTextEffects(deltaTime);
 
     gameState.spawnTimer += deltaTime;
-    if (gameState.spawnTimer >= GAME_CONFIG.darkLordSpawnCooldown) {
-        spawnScout();
-        gameState.spawnTimer = 0;
+    while (gameState.spawnTimer >= gameState.spawnCooldown) {
+        spawnScoutsForPhase();
+        gameState.spawnTimer -= gameState.spawnCooldown;
     }
 
     updateCamera();

@@ -170,8 +170,8 @@ export function updateScoutsAI(deltaTime) {
         } else if (scout.state === 'PATROLLING') {
             const distToTarget = distance(scout.targetX, scout.targetY, scout.x, scout.y);
             if (distToTarget < 20) {
-                scout.targetX = scout.patrolCenterX + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
-                scout.targetY = scout.patrolCenterY + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
+                scout.targetX = scout.patrolCenterX + (Math.random() - 0.5) * 2 * scout.patrolRadius;
+                scout.targetY = scout.patrolCenterY + (Math.random() - 0.5) * 2 * scout.patrolRadius;
             }
         }
 

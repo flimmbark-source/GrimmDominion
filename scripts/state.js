@@ -12,7 +12,8 @@ import {
     VILLAGERS_PER_VILLAGE,
     MILITIA_PER_VILLAGE,
     SCOUT_STATS,
-    MILITIA_STATS
+    MILITIA_STATS,
+    ENCOUNTER_PHASES
 } from './constants.js';
 
 export const gameState = {
@@ -31,8 +32,50 @@ export const gameState = {
     villages: [],
     worldTextEffects: [],
     spawnTimer: GAME_CONFIG.darkLordSpawnCooldown,
+    spawnCooldown: GAME_CONFIG.darkLordSpawnCooldown,
+    encounterPhaseIndex: 0,
+    encounterPhaseElapsed: 0,
     gameOver: false
 };
+
+function applyEncounterPhaseSettings(phase) {
+    gameState.spawnCooldown = GAME_CONFIG.darkLordSpawnCooldown * phase.spawnCooldownMultiplier;
+    gameState.scouts.forEach((scout) => {
+        if (!scout.basePatrolRadius) {
+            scout.basePatrolRadius = SCOUT_STATS.patrolRadius;
+        }
+        scout.patrolRadius = scout.basePatrolRadius * phase.patrolDensityMultiplier;
+    });
+    if (gameState.spawnTimer > gameState.spawnCooldown) {
+        gameState.spawnTimer = gameState.spawnCooldown;
+    }
+}
+
+export function getCurrentEncounterPhase() {
+    return ENCOUNTER_PHASES[gameState.encounterPhaseIndex];
+}
+
+export function updateEncounterPhase(deltaTime) {
+    gameState.encounterPhaseElapsed += deltaTime;
+    let currentPhase = getCurrentEncounterPhase();
+    while (gameState.encounterPhaseElapsed >= currentPhase.duration) {
+        gameState.encounterPhaseElapsed -= currentPhase.duration;
+        gameState.encounterPhaseIndex = (gameState.encounterPhaseIndex + 1) % ENCOUNTER_PHASES.length;
+        currentPhase = getCurrentEncounterPhase();
+        applyEncounterPhaseSettings(currentPhase);
+    }
+}
+
+export function getEncounterPhaseStatus() {
+    const phase = getCurrentEncounterPhase();
+    const remaining = Math.max(0, phase.duration - gameState.encounterPhaseElapsed);
+    return {
+        phase,
+        elapsed: gameState.encounterPhaseElapsed,
+        remaining,
+        progress: phase.duration === 0 ? 1 : Math.min(1, gameState.encounterPhaseElapsed / phase.duration)
+    };
+}
 
 function createHero() {
     return {
@@ -114,15 +157,18 @@ export function initializeGameState(canvas) {
     gameState.hero = createHero();
     gameState.camera.width = canvas.width;
     gameState.camera.height = canvas.height;
-    gameState.spawnTimer = GAME_CONFIG.darkLordSpawnCooldown;
-    gameState.gameOver = false;
-
-    gameState.forests = Array.from({ length: FOREST_COUNT }, createForest);
-    gameState.villages = Array.from({ length: VILLAGE_COUNT }, createVillage);
     gameState.scouts = [];
     gameState.projectiles = [];
     gameState.militiaProjectiles = [];
     gameState.worldTextEffects = [];
+    gameState.encounterPhaseIndex = 0;
+    gameState.encounterPhaseElapsed = 0;
+    applyEncounterPhaseSettings(getCurrentEncounterPhase());
+    gameState.spawnTimer = gameState.spawnCooldown;
+    gameState.gameOver = false;
+
+    gameState.forests = Array.from({ length: FOREST_COUNT }, createForest);
+    gameState.villages = Array.from({ length: VILLAGE_COUNT }, createVillage);
     cloneShopItems();
 }
 
@@ -136,6 +182,7 @@ export function cloneShopItems() {
 }
 
 export function createScout() {
+    const phase = getCurrentEncounterPhase();
     return {
         id: Math.random(),
         x: gameState.castle.x + gameState.castle.width / 2,
@@ -151,6 +198,8 @@ export function createScout() {
         targetY: Math.random() * WORLD.height,
         patrolCenterX: Math.random() * WORLD.width,
         patrolCenterY: Math.random() * WORLD.height,
+        basePatrolRadius: SCOUT_STATS.patrolRadius,
+        patrolRadius: SCOUT_STATS.patrolRadius * phase.patrolDensityMultiplier,
         villageAttackTarget: null,
         villageAttackCooldown: 0,
         heroAttackCooldown: 0

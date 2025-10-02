@@ -8,6 +8,33 @@ export const GAME_CONFIG = {
     sellPriceModifier: 0.5
 };
 
+export const ENCOUNTER_PHASES = [
+    {
+        name: 'Calm',
+        duration: 75,
+        spawnCooldownMultiplier: 1.35,
+        spawnCount: 1,
+        patrolDensityMultiplier: 1.35,
+        accentColor: '#7dc3ff'
+    },
+    {
+        name: 'Alert',
+        duration: 55,
+        spawnCooldownMultiplier: 1,
+        spawnCount: 2,
+        patrolDensityMultiplier: 1,
+        accentColor: '#ffd15c'
+    },
+    {
+        name: 'Hunt',
+        duration: 40,
+        spawnCooldownMultiplier: 0.65,
+        spawnCount: 3,
+        patrolDensityMultiplier: 0.7,
+        accentColor: '#ff7d7d'
+    }
+];
+
 export const HERO_BASE_STATS = {
     x: WORLD.width / 2 + 400,
     y: WORLD.height / 2 + 300,
