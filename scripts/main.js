@@ -1,5 +1,5 @@
-import { GAME_CONFIG, MILITIA_PROJECTILE_SPEED, MILITIA_STATS } from './constants.js';
-import { gameState, initializeGameState, resetHeroTarget, createScout } from './state.js';
+import { MILITIA_PROJECTILE_SPEED, MILITIA_STATS } from './constants.js';
+import { gameState, initializeGameState, resetHeroTarget } from './state.js';
 import { setupShop } from './shop.js';
 import { createInventorySlots, drawInventory, updateUI } from './ui.js';
 import { setupDragAndDrop, isDraggingItem, updateDraggedIconPosition } from './drag-drop.js';
@@ -7,10 +7,7 @@ import { updateHero, updateMilitiaAI, updateProjectiles, updateScoutsAI, handleC
 import { updateWorldTextEffects } from './effects.js';
 import { updateCamera } from './camera.js';
 import { draw } from './render.js';
-
-function spawnScout() {
-    gameState.scouts.push(createScout());
-}
+import { initializeDirector, updateDirector } from './director.js';
 
 function resizeCanvas() {
     const container = document.getElementById('gameContainer');
@@ -70,11 +67,7 @@ function gameLoop(timestamp) {
     handleCollisionsAndDeaths();
     updateWorldTextEffects(deltaTime);
 
-    gameState.spawnTimer += deltaTime;
-    if (gameState.spawnTimer >= GAME_CONFIG.darkLordSpawnCooldown) {
-        spawnScout();
-        gameState.spawnTimer = 0;
-    }
+    updateDirector(deltaTime);
 
     updateCamera();
     updateUI();
@@ -86,6 +79,7 @@ function gameLoop(timestamp) {
 function initialize() {
     const canvas = document.getElementById('gameCanvas');
     initializeGameState(canvas);
+    initializeDirector();
     createInventorySlots();
     drawInventory();
     setupShop(drawInventory);

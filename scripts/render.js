@@ -61,7 +61,8 @@ export function draw() {
     ctx.textAlign = 'center';
     ctx.fillText('Castle', gameState.castle.x + gameState.castle.width / 2, gameState.castle.y + gameState.castle.height / 2 + 10);
 
-    const spawnRatio = Math.min(1, gameState.spawnTimer / GAME_CONFIG.darkLordSpawnCooldown);
+    const spawnWindow = gameState.director ? gameState.director.cooldownDuration : GAME_CONFIG.darkLordSpawnCooldown;
+    const spawnRatio = spawnWindow > 0 ? Math.min(1, gameState.spawnTimer / spawnWindow) : 1;
     ctx.fillStyle = '#333';
     ctx.fillRect(gameState.castle.x, gameState.castle.y - 20, gameState.castle.width, 10);
     ctx.fillStyle = '#8a2be2';
