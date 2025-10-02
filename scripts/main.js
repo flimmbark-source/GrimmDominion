@@ -1,5 +1,11 @@
 import { MILITIA_PROJECTILE_SPEED, MILITIA_STATS } from './constants.js';
-import { gameState, initializeGameState, resetHeroTarget } from './state.js';
+import {
+    gameState,
+    initializeGameState,
+    resetHeroTarget,
+    updateEncounterPhase,
+    spawnScoutsForCurrentPhase
+} from './state.js';
 import { setupShop } from './shop.js';
 import { createInventorySlots, drawInventory, updateUI } from './ui.js';
 import { setupDragAndDrop, isDraggingItem, updateDraggedIconPosition } from './drag-drop.js';
@@ -9,13 +15,6 @@ import { updateCamera } from './camera.js';
 import { draw } from './render.js';
 import { initializeDirector, updateDirector } from './director.js';
 import { updateRunState } from './run-conditions.js';
-
-function spawnScoutsForPhase() {
-    const phase = getCurrentEncounterPhase();
-    for (let i = 0; i < phase.spawnCount; i += 1) {
-        spawnScout();
-    }
-}
 
 function resizeCanvas() {
     const container = document.getElementById('gameContainer');
@@ -80,7 +79,10 @@ function gameLoop(timestamp) {
     const deltaTime = (timestamp - lastTimestamp) / 1000;
     lastTimestamp = timestamp;
 
-    updateEncounterPhase(deltaTime);
+    const phaseAdvanced = updateEncounterPhase(deltaTime);
+    if (phaseAdvanced) {
+        spawnScoutsForCurrentPhase();
+    }
     updateHero(deltaTime);
     updateScoutsAI(deltaTime);
     updateMilitiaAI(deltaTime);

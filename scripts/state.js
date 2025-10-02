@@ -16,6 +16,30 @@ import {
     SCOUT_STATS
 } from './constants.js';
 
+export const ENCOUNTER_PHASES = [
+    {
+        key: 'skirmish',
+        name: 'Skirmish Patrols',
+        duration: 90,
+        spawnCount: 1,
+        accentColor: '#22d3ee'
+    },
+    {
+        key: 'incursion',
+        name: 'Incursion Forces',
+        duration: 120,
+        spawnCount: 2,
+        accentColor: '#f97316'
+    },
+    {
+        key: 'onslaught',
+        name: 'Nightfall Onslaught',
+        duration: Infinity,
+        spawnCount: 3,
+        accentColor: '#ef4444'
+    }
+];
+
 export const gameState = {
     canvas: null,
     ctx: null,
@@ -42,7 +66,9 @@ export const gameState = {
     castleProbeTimer: 0,
     castleProbeSourceId: null,
     runOutcome: null,
-    runOutcomeReason: null
+    runOutcomeReason: null,
+    encounterPhaseIndex: 0,
+    encounterPhaseTimer: 0
 };
 
 function clamp(value, min, max) {
@@ -153,7 +179,19 @@ export function initializeGameState(canvas) {
     gameState.castleProbeSourceId = null;
     gameState.runOutcome = null;
     gameState.runOutcomeReason = null;
+    gameState.encounterPhaseIndex = 0;
+    gameState.encounterPhaseTimer = 0;
     cloneShopItems();
+}
+
+function getMinionSpawnPoint() {
+    const castleCenterX = gameState.castle.x + gameState.castle.width / 2;
+    const castleCenterY = gameState.castle.y + gameState.castle.height / 2;
+    const angle = Math.random() * Math.PI * 2;
+    const radius = Math.max(gameState.castle.width, gameState.castle.height) * 0.75 + 40 + Math.random() * 60;
+    const x = clamp(castleCenterX + Math.cos(angle) * radius, 0, gameState.world.width);
+    const y = clamp(castleCenterY + Math.sin(angle) * radius, 0, gameState.world.height);
+    return { x, y };
 }
 
 export function resetHeroTarget() {
@@ -168,10 +206,11 @@ export function cloneShopItems() {
 export function createScout(options = {}) {
     const { assignment = 'PATROL', targetVillageId = null } = options;
 
-    let patrolCenterX = Math.random() * WORLD.width;
-    let patrolCenterY = Math.random() * WORLD.height;
-    let targetX = Math.random() * WORLD.width;
-    let targetY = Math.random() * WORLD.height;
+    const spawnPoint = getMinionSpawnPoint();
+    let patrolCenterX = spawnPoint.x;
+    let patrolCenterY = spawnPoint.y;
+    let targetX = spawnPoint.x;
+    let targetY = spawnPoint.y;
 
     if (assignment === 'RAID' && targetVillageId) {
         const targetVillage = gameState.villages.find((village) => village.id === targetVillageId);
@@ -184,27 +223,43 @@ export function createScout(options = {}) {
             targetY = clamp(targetVillage.y + (Math.random() - 0.5) * 120, 0, WORLD.height);
         }
     } else {
+        const patrolRadius = SCOUT_STATS.patrolRadius ?? 200;
+        patrolCenterX = clamp(patrolCenterX + (Math.random() - 0.5) * patrolRadius, 0, WORLD.width);
+        patrolCenterY = clamp(patrolCenterY + (Math.random() - 0.5) * patrolRadius, 0, WORLD.height);
         targetX = clamp(
-            patrolCenterX + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius,
+            patrolCenterX + (Math.random() - 0.5) * 2 * patrolRadius,
             0,
             WORLD.width
         );
         targetY = clamp(
-            patrolCenterY + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius,
+            patrolCenterY + (Math.random() - 0.5) * 2 * patrolRadius,
             0,
             WORLD.height
         );
     }
 
-    return {
-        x: gameState.castle.x + gameState.castle.width / 2,
-        y: gameState.castle.y + gameState.castle.height / 2
-    };
+    return createMinion('scout', {
+        assignment,
+        targetVillageId,
+        patrolCenterX,
+        patrolCenterY,
+        targetX,
+        targetY,
+        spawnPoint
+    });
 }
 
-export function createMinion(role = 'scout') {
+export function createMinion(role = 'scout', overrides = {}) {
     const config = MINION_TYPES[role] || MINION_TYPES.scout;
-    const spawnPoint = getMinionSpawnPoint();
+    const spawnPoint = overrides.spawnPoint || getMinionSpawnPoint();
+
+    const assignment = overrides.assignment ?? 'PATROL';
+    const targetVillageId = overrides.targetVillageId ?? null;
+    const patrolCenterX = overrides.patrolCenterX ?? spawnPoint.x;
+    const patrolCenterY = overrides.patrolCenterY ?? spawnPoint.y;
+    const targetX = overrides.targetX ?? patrolCenterX;
+    const targetY = overrides.targetY ?? patrolCenterY;
+
     return {
         id: Math.random(),
         role: config.role,
@@ -219,7 +274,7 @@ export function createMinion(role = 'scout') {
         isBuffed: false,
         assignment,
         targetVillageId,
-        state: 'PATROLLING',
+        state: overrides.state ?? 'PATROLLING',
         patrolCenterX,
         patrolCenterY,
         targetX,
@@ -238,13 +293,23 @@ export function createMinion(role = 'scout') {
         healAmount: config.healAmount ?? null,
         healRadius: config.healRadius ?? null,
         healCooldown: config.healCooldown ?? null,
-        healCooldownTimer: config.healCooldown ?? 0,
+        healCooldownTimer: 0,
         revealDuration: config.revealDuration ?? null,
         revealCooldown: config.revealCooldown ?? null,
         revealCooldownTimer: 0,
         followDistance: config.followDistance ?? 0,
         speedBuffMultiplier: config.speedBuffMultiplier ?? 1,
-        hpBuffBonus: config.hpBuffBonus ?? 0
+        hpBuffBonus: config.hpBuffBonus ?? 0,
+        detectionLevel: 0,
+        noiseInvestigationTimer: 0,
+        searchTimer: 0,
+        facingAngle: Math.random() * Math.PI * 2,
+        sightRange: config.sightRange,
+        criticalSightRange: config.criticalSightRange,
+        visionCone: config.visionCone,
+        detectionRate: config.detectionRate,
+        detectionDecayRate: config.detectionDecay,
+        detectionLoseRate: config.detectionLoseRate
     };
 }
 
@@ -267,4 +332,63 @@ export function getDetectionThreat() {
         label = 'Suspicious';
     }
     return { level: highest, label };
+}
+
+export function getCurrentEncounterPhase() {
+    return ENCOUNTER_PHASES[Math.min(gameState.encounterPhaseIndex, ENCOUNTER_PHASES.length - 1)] ?? null;
+}
+
+export function getEncounterPhaseStatus() {
+    const phase = getCurrentEncounterPhase();
+    if (!phase) {
+        return { phase: null, remaining: 0 };
+    }
+    const remaining = Number.isFinite(phase.duration)
+        ? Math.max(0, phase.duration - gameState.encounterPhaseTimer)
+        : 0;
+    return { phase, remaining };
+}
+
+export function spawnScoutsForCurrentPhase() {
+    const phase = getCurrentEncounterPhase();
+    if (!phase) {
+        return [];
+    }
+    const spawned = [];
+    for (let i = 0; i < phase.spawnCount; i += 1) {
+        const scout = createScout();
+        gameState.scouts.push(scout);
+        spawned.push(scout);
+    }
+    return spawned;
+}
+
+export function updateEncounterPhase(deltaTime) {
+    if (gameState.gameOver) {
+        return false;
+    }
+
+    const phase = getCurrentEncounterPhase();
+    if (!phase) {
+        return false;
+    }
+
+    if (!Number.isFinite(phase.duration) || phase.duration <= 0) {
+        gameState.encounterPhaseTimer = 0;
+        return false;
+    }
+
+    gameState.encounterPhaseTimer += deltaTime;
+    if (gameState.encounterPhaseTimer < phase.duration) {
+        return false;
+    }
+
+    if (gameState.encounterPhaseIndex < ENCOUNTER_PHASES.length - 1) {
+        gameState.encounterPhaseIndex += 1;
+        gameState.encounterPhaseTimer = 0;
+        return true;
+    }
+
+    gameState.encounterPhaseTimer = phase.duration;
+    return false;
 }
