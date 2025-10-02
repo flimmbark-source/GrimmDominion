@@ -1,5 +1,5 @@
-import { GAME_CONFIG, MILITIA_STATS } from './constants.js';
-import { gameState } from './state.js';
+import { GAME_CONFIG, MILITIA_STATS, RUN_CONFIG } from './constants.js';
+import { gameState, registerVillageLoss, registerVillageSave, endRun } from './state.js';
 import { distance, isPointInRect } from './utils.js';
 
 function getHeroCenter() {
@@ -234,6 +234,9 @@ export function updateScoutsAI(deltaTime) {
     gameState.scouts.forEach((scout) => {
         scout.villageAttackCooldown -= deltaTime;
         scout.heroAttackCooldown -= deltaTime;
+        if (typeof scout.spawnGraceTimer === 'number' && scout.spawnGraceTimer > 0) {
+            scout.spawnGraceTimer = Math.max(0, scout.spawnGraceTimer - deltaTime);
+        }
         if (typeof scout.healCooldownTimer === 'number') {
             scout.healCooldownTimer -= deltaTime;
         }
@@ -248,12 +251,12 @@ export function updateScoutsAI(deltaTime) {
             if (targetVillage) {
                 const distToVillage = distance(targetVillage.x, targetVillage.y, scout.x, scout.y);
                 const calmVillage = !targetVillage.isUnderAttack && targetVillage.attackers.size === 0;
-                if (calmVillage && distToVillage < SCOUT_STATS.patrolRadius * 0.5) {
+                if (calmVillage && distToVillage < scout.patrolRadius * 0.5) {
                     scout.assignment = 'PATROL';
                     scout.targetVillageId = null;
                     scout.patrolCenterX = scout.x;
                     scout.patrolCenterY = scout.y;
-                } else if (distToVillage > SCOUT_STATS.patrolRadius * 0.6) {
+                } else if (distToVillage > scout.patrolRadius * 0.6) {
                     scout.targetX = Math.max(
                         0,
                         Math.min(gameState.world.width, targetVillage.x + (Math.random() - 0.5) * 120)
@@ -359,12 +362,12 @@ export function updateScoutsAI(deltaTime) {
                     } else {
                         scout.assignment = 'PATROL';
                         scout.targetVillageId = null;
-                        scout.targetX = scout.patrolCenterX + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
-                        scout.targetY = scout.patrolCenterY + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
+                        scout.targetX = scout.patrolCenterX + (Math.random() - 0.5) * 2 * scout.patrolRadius;
+                        scout.targetY = scout.patrolCenterY + (Math.random() - 0.5) * 2 * scout.patrolRadius;
                     }
                 } else {
-                    scout.targetX = scout.patrolCenterX + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
-                    scout.targetY = scout.patrolCenterY + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
+                    scout.targetX = scout.patrolCenterX + (Math.random() - 0.5) * 2 * scout.patrolRadius;
+                    scout.targetY = scout.patrolCenterY + (Math.random() - 0.5) * 2 * scout.patrolRadius;
                 }
             }
         }
@@ -440,7 +443,7 @@ export function updateScoutsAI(deltaTime) {
     });
 }
 
-export function handleCollisionsAndDeaths() {
+export function handleCollisionsAndDeaths(deltaTime = 0) {
     const heroCenter = getHeroCenter();
     for (let i = gameState.scouts.length - 1; i >= 0; i -= 1) {
         const scout = gameState.scouts[i];
@@ -456,12 +459,27 @@ export function handleCollisionsAndDeaths() {
                 scout.heroAttackCooldown = scout.heroAttackCooldownMax;
             }
         }
+
+        if (
+            !gameState.gameOver &&
+            gameState.castle &&
+            gameState.castle.hp > 0 &&
+            isPointInRect(scout, gameState.castle) &&
+            (!scout.spawnGraceTimer || scout.spawnGraceTimer <= 0)
+        ) {
+            gameState.castle.hp = Math.max(
+                0,
+                gameState.castle.hp - RUN_CONFIG.castleDamagePerSecond * deltaTime
+            );
+            if (gameState.castle.hp <= 0) {
+                endRun('defeat', 'The Gate Falls', 'The castle gate was breached.');
+            }
+        }
     }
 
     if (gameState.hero.hp <= 0) {
         gameState.hero.hp = 0;
-        gameState.gameOver = true;
-        document.getElementById('gameOverScreen').classList.remove('hidden');
+        endRun('defeat', 'The Hero Has Fallen', 'The dominion collapses without its champion.');
     }
 
     for (let i = gameState.scouts.length - 1; i >= 0; i -= 1) {
@@ -490,6 +508,7 @@ export function handleCollisionsAndDeaths() {
                                 font: 'bold 20px MedievalSharp',
                                 lifespan: 2
                             });
+                            registerVillageSave(village);
                         } else {
                             gameState.worldTextEffects.push({
                                 text: 'Militia Saved the Day!',
@@ -508,6 +527,9 @@ export function handleCollisionsAndDeaths() {
     }
 
     gameState.villages.forEach((village) => {
+        if (village.isDestroyed) {
+            return;
+        }
         for (let i = village.villagers.length - 1; i >= 0; i -= 1) {
             if (village.villagers[i].hp <= 0) {
                 village.villagers.splice(i, 1);
@@ -517,6 +539,23 @@ export function handleCollisionsAndDeaths() {
             if (village.militia[i].hp <= 0) {
                 village.militia.splice(i, 1);
             }
+        }
+
+        const hutsStanding = village.huts.some((hut) => hut.hp > 0);
+        const villagersStanding = village.villagers.length > 0;
+        if (!hutsStanding || !villagersStanding) {
+            village.isDestroyed = true;
+            village.isUnderAttack = false;
+            village.attackers.clear();
+            registerVillageLoss(village);
+            gameState.worldTextEffects.push({
+                text: 'Village Fallen',
+                x: village.x,
+                y: village.y - 20,
+                color: 'rgba(255, 120, 120, 1)',
+                font: 'bold 22px MedievalSharp',
+                lifespan: 2.5
+            });
         }
     });
 }

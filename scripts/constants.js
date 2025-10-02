@@ -50,7 +50,16 @@ export const CASTLE = {
     y: WORLD.height / 2,
     width: 150,
     height: 150,
-    color: '#2c1e1e'
+    color: '#2c1e1e',
+    maxHp: 600
+};
+
+export const RUN_CONFIG = {
+    defeatVillageThreshold: 3,
+    victoryTimeMinutes: 15,
+    victoryVillageSaveRequirement: 3,
+    castleDamagePerSecond: 35,
+    spawnGracePeriod: 4
 };
 
 export const SHOP = {

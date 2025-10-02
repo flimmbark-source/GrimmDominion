@@ -19,12 +19,12 @@ export function draw() {
     });
 
     gameState.villages.forEach((village) => {
-        ctx.fillStyle = '#6b4f3a';
+        ctx.fillStyle = village.isDestroyed ? '#3b2b21' : '#6b4f3a';
         ctx.beginPath();
         ctx.arc(village.x, village.y, 100, 0, Math.PI * 2);
         ctx.fill();
         village.huts.forEach((hut) => {
-            ctx.fillStyle = '#8B4513';
+            ctx.fillStyle = hut.hp > 0 ? '#8B4513' : '#3b2b21';
             ctx.fillRect(hut.x, hut.y, hut.width, hut.height);
         });
         village.villagers.forEach((villager) => {

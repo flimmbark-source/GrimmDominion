@@ -1,5 +1,5 @@
 import { MILITIA_PROJECTILE_SPEED, MILITIA_STATS } from './constants.js';
-import { gameState, initializeGameState, resetHeroTarget } from './state.js';
+import { gameState, initializeGameState, resetHeroTarget, advanceRun } from './state.js';
 import { setupShop } from './shop.js';
 import { createInventorySlots, drawInventory, updateUI } from './ui.js';
 import { setupDragAndDrop, isDraggingItem, updateDraggedIconPosition } from './drag-drop.js';
@@ -61,6 +61,11 @@ function gameLoop(timestamp) {
     const deltaTime = (timestamp - lastTimestamp) / 1000;
     lastTimestamp = timestamp;
 
+    advanceRun(deltaTime);
+    if (gameState.gameOver) {
+        return;
+    }
+
     updateEncounterPhase(deltaTime);
     updateHero(deltaTime);
     updateScoutsAI(deltaTime);
@@ -72,7 +77,7 @@ function gameLoop(timestamp) {
         MILITIA_STATS.damage,
         'militia'
     );
-    handleCollisionsAndDeaths();
+    handleCollisionsAndDeaths(deltaTime);
     updateWorldTextEffects(deltaTime);
 
     updateDirector(deltaTime);

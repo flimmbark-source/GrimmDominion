@@ -1,4 +1,5 @@
-import { gameState, getEncounterPhaseStatus } from './state.js';
+import { RUN_CONFIG } from './constants.js';
+import { gameState, getEncounterPhaseStatus, getRunStatus } from './state.js';
 import { updateShopButtons } from './shop.js';
 
 export function createInventorySlots() {
@@ -49,6 +50,11 @@ export function updateUI() {
     const phaseName = document.getElementById('phaseName');
     const phaseTimer = document.getElementById('phaseTimer');
     const phaseAccent = document.getElementById('phasePanel');
+    const runTimer = document.getElementById('runTimerText');
+    const savedText = document.getElementById('villagesSavedText');
+    const lostText = document.getElementById('villagesLostText');
+    const castleBar = document.getElementById('castleIntegrityBar');
+    const castleText = document.getElementById('castleIntegrityText');
 
     healthBar.style.width = `${(gameState.hero.hp / gameState.hero.maxHp) * 100}%`;
     healthText.textContent = `${Math.ceil(gameState.hero.hp)}/${Math.ceil(gameState.hero.maxHp)}`;
@@ -74,5 +80,32 @@ export function updateUI() {
             .toString()
             .padStart(2, '0');
         phaseTimer.textContent = `${minutes}:${seconds}`;
+    }
+
+    if (runTimer && savedText && lostText && castleBar && castleText) {
+        const status = getRunStatus();
+        const totalSeconds = Math.max(0, Math.floor(status.timeElapsed));
+        const minutes = Math.floor(totalSeconds / 60)
+            .toString()
+            .padStart(2, '0');
+        const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+        runTimer.textContent = `${minutes}:${seconds}`;
+        savedText.textContent = `${status.villagesSaved}/${RUN_CONFIG.victoryVillageSaveRequirement}`;
+        lostText.textContent = `${status.villagesLost}/${RUN_CONFIG.defeatVillageThreshold}`;
+
+        if (gameState.castle) {
+            const castlePercent = gameState.castle.maxHp
+                ? Math.max(0, Math.min(1, gameState.castle.hp / gameState.castle.maxHp))
+                : 0;
+            castleBar.style.width = `${castlePercent * 100}%`;
+            let color = '#2a7e2a';
+            if (castlePercent < 0.35) {
+                color = '#a11d1d';
+            } else if (castlePercent < 0.7) {
+                color = '#cfa431';
+            }
+            castleBar.style.backgroundColor = color;
+            castleText.textContent = `${Math.ceil(gameState.castle.hp)}/${gameState.castle.maxHp}`;
+        }
     }
 }
