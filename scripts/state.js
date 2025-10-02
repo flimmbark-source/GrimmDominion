@@ -16,29 +16,47 @@ import {
     SCOUT_STATS
 } from './constants.js';
 
-export const ENCOUNTER_PHASES = [
+const DEFAULT_ENCOUNTER_PHASES = [
     {
-        key: 'skirmish',
-        name: 'Skirmish Patrols',
+        id: 'calm_watch',
+        name: 'Calm Watch',
         duration: 90,
         spawnCount: 1,
-        accentColor: '#22d3ee'
+        accentColor: '#38bdf8'
     },
     {
-        key: 'incursion',
-        name: 'Incursion Forces',
+        id: 'gathering_storm',
+        name: 'Gathering Storm',
         duration: 120,
         spawnCount: 2,
-        accentColor: '#f97316'
+        accentColor: '#facc15'
     },
     {
-        key: 'onslaught',
+        id: 'nightfall_onslaught',
         name: 'Nightfall Onslaught',
-        duration: Infinity,
+        duration: 150,
         spawnCount: 3,
         accentColor: '#ef4444'
     }
 ];
+
+
+const FALLBACK_PHASE = {
+    id: 'unknown',
+    name: 'Calm',
+    duration: 0,
+    spawnCount: 0,
+    accentColor: '#64748b'
+};
+
+function createEncounterState() {
+    return {
+        phases: DEFAULT_ENCOUNTER_PHASES.map((phase) => ({ ...phase })),
+        currentIndex: 0,
+        phaseElapsed: 0,
+        totalElapsed: 0
+    };
+}
 
 export const gameState = {
     canvas: null,
@@ -67,8 +85,7 @@ export const gameState = {
     castleProbeSourceId: null,
     runOutcome: null,
     runOutcomeReason: null,
-    encounterPhaseIndex: 0,
-    encounterPhaseTimer: 0
+    encounter: createEncounterState()
 };
 
 function clamp(value, min, max) {
@@ -179,8 +196,7 @@ export function initializeGameState(canvas) {
     gameState.castleProbeSourceId = null;
     gameState.runOutcome = null;
     gameState.runOutcomeReason = null;
-    gameState.encounterPhaseIndex = 0;
-    gameState.encounterPhaseTimer = 0;
+    gameState.encounter = createEncounterState();
     cloneShopItems();
 }
 
@@ -334,61 +350,24 @@ export function getDetectionThreat() {
     return { level: highest, label };
 }
 
-export function getCurrentEncounterPhase() {
-    return ENCOUNTER_PHASES[Math.min(gameState.encounterPhaseIndex, ENCOUNTER_PHASES.length - 1)] ?? null;
-}
-
 export function getEncounterPhaseStatus() {
-    const phase = getCurrentEncounterPhase();
-    if (!phase) {
-        return { phase: null, remaining: 0 };
+    const encounter = gameState.encounter;
+    if (!encounter || !Array.isArray(encounter.phases) || encounter.phases.length === 0) {
+        return { phase: FALLBACK_PHASE, remaining: 0 };
     }
-    const remaining = Number.isFinite(phase.duration)
-        ? Math.max(0, phase.duration - gameState.encounterPhaseTimer)
-        : 0;
+
+    const safeIndex = Math.min(
+        Math.max(encounter.currentIndex ?? 0, 0),
+        encounter.phases.length - 1
+    );
+    const phase = encounter.phases[safeIndex] ?? FALLBACK_PHASE;
+
+    if (!Number.isFinite(phase.duration)) {
+        return { phase, remaining: 0 };
+    }
+
+    const elapsed = Math.max(0, encounter.phaseElapsed ?? 0);
+    const remaining = Math.max(0, phase.duration - elapsed);
+
     return { phase, remaining };
-}
-
-export function spawnScoutsForCurrentPhase() {
-    const phase = getCurrentEncounterPhase();
-    if (!phase) {
-        return [];
-    }
-    const spawned = [];
-    for (let i = 0; i < phase.spawnCount; i += 1) {
-        const scout = createScout();
-        gameState.scouts.push(scout);
-        spawned.push(scout);
-    }
-    return spawned;
-}
-
-export function updateEncounterPhase(deltaTime) {
-    if (gameState.gameOver) {
-        return false;
-    }
-
-    const phase = getCurrentEncounterPhase();
-    if (!phase) {
-        return false;
-    }
-
-    if (!Number.isFinite(phase.duration) || phase.duration <= 0) {
-        gameState.encounterPhaseTimer = 0;
-        return false;
-    }
-
-    gameState.encounterPhaseTimer += deltaTime;
-    if (gameState.encounterPhaseTimer < phase.duration) {
-        return false;
-    }
-
-    if (gameState.encounterPhaseIndex < ENCOUNTER_PHASES.length - 1) {
-        gameState.encounterPhaseIndex += 1;
-        gameState.encounterPhaseTimer = 0;
-        return true;
-    }
-
-    gameState.encounterPhaseTimer = phase.duration;
-    return false;
 }
