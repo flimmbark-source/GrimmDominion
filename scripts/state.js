@@ -329,6 +329,64 @@ export function createMinion(role = 'scout', overrides = {}) {
     };
 }
 
+export function updateEncounterPhase(deltaTime) {
+    if (!Number.isFinite(deltaTime) || deltaTime <= 0) {
+        return false;
+    }
+
+    const encounter = gameState.encounter;
+    if (!encounter) {
+        return false;
+    }
+
+    const phases = Array.isArray(encounter.phases) ? encounter.phases : [];
+    if (phases.length === 0) {
+        encounter.totalElapsed += deltaTime;
+        return false;
+    }
+
+    const clampedIndex = Math.min(Math.max(encounter.currentIndex ?? 0, 0), phases.length - 1);
+    encounter.currentIndex = clampedIndex;
+
+    encounter.phaseElapsed += deltaTime;
+    encounter.totalElapsed += deltaTime;
+
+    const currentPhase = phases[clampedIndex] ?? FALLBACK_PHASE;
+    const duration = Number.isFinite(currentPhase.duration) ? currentPhase.duration : 0;
+
+    if (duration <= 0) {
+        return false;
+    }
+
+    if (encounter.phaseElapsed >= duration) {
+        encounter.phaseElapsed = 0;
+        encounter.currentIndex = (clampedIndex + 1) % phases.length;
+        return true;
+    }
+
+    return false;
+}
+
+export function spawnScoutsForCurrentPhase() {
+    const encounter = gameState.encounter;
+    if (!encounter) {
+        return;
+    }
+
+    const phases = Array.isArray(encounter.phases) ? encounter.phases : [];
+    if (phases.length === 0) {
+        return;
+    }
+
+    const clampedIndex = Math.min(Math.max(encounter.currentIndex ?? 0, 0), phases.length - 1);
+    const currentPhase = phases[clampedIndex] ?? FALLBACK_PHASE;
+    const spawnCount = Math.max(0, Math.floor(currentPhase.spawnCount ?? 0));
+
+    for (let i = 0; i < spawnCount; i += 1) {
+        gameState.scouts.push(createScout({ assignment: 'PATROL' }));
+    }
+}
+
 export function getDetectionThreat() {
     let highest = 0;
     gameState.scouts.forEach((scout) => {
