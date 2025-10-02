@@ -11,8 +11,8 @@ import {
     HUTS_PER_VILLAGE,
     VILLAGERS_PER_VILLAGE,
     MILITIA_PER_VILLAGE,
-    SCOUT_STATS,
-    MILITIA_STATS
+    MILITIA_STATS,
+    MINION_TYPES
 } from './constants.js';
 
 export const gameState = {
@@ -45,6 +45,7 @@ function createHero() {
         targetX: HERO_BASE_STATS.x,
         targetY: HERO_BASE_STATS.y,
         attackTimer: 0,
+        revealTimer: 0,
         inventory: new Array(GAME_CONFIG.inventorySize).fill(null)
     };
 }
@@ -173,14 +174,25 @@ export function createScout(options = {}) {
     }
 
     return {
-        id: Math.random(),
         x: gameState.castle.x + gameState.castle.width / 2,
-        y: gameState.castle.y + gameState.castle.height / 2,
-        radius: 10,
-        color: '#e24a4a',
-        hp: SCOUT_STATS.maxHp,
-        maxHp: SCOUT_STATS.maxHp,
-        speed: SCOUT_STATS.baseSpeed,
+        y: gameState.castle.y + gameState.castle.height / 2
+    };
+}
+
+export function createMinion(role = 'scout') {
+    const config = MINION_TYPES[role] || MINION_TYPES.scout;
+    const spawnPoint = getMinionSpawnPoint();
+    return {
+        id: Math.random(),
+        role: config.role,
+        x: spawnPoint.x,
+        y: spawnPoint.y,
+        radius: config.radius,
+        color: config.color,
+        hp: config.maxHp,
+        maxHp: config.maxHp,
+        speed: config.baseSpeed,
+        baseSpeed: config.baseSpeed,
         isBuffed: false,
         assignment,
         targetVillageId,
@@ -191,6 +203,24 @@ export function createScout(options = {}) {
         targetY,
         villageAttackTarget: null,
         villageAttackCooldown: 0,
-        heroAttackCooldown: 0
+        villageAttackCooldownMax: config.villageAttackCooldown,
+        villageAttackDamage: config.villageAttackDamage,
+        heroAttackCooldown: 0,
+        heroAttackCooldownMax: config.heroAttackCooldown,
+        attackRange: config.attackRange ?? config.radius + 20,
+        damage: config.damage,
+        damageMultipliers: { militia: 1, hero: 1, ...(config.damageMultipliers || {}) },
+        swingRadius: config.swingRadius ?? null,
+        structureDamageMultiplier: config.structureDamageMultiplier ?? 1,
+        healAmount: config.healAmount ?? null,
+        healRadius: config.healRadius ?? null,
+        healCooldown: config.healCooldown ?? null,
+        healCooldownTimer: config.healCooldown ?? 0,
+        revealDuration: config.revealDuration ?? null,
+        revealCooldown: config.revealCooldown ?? null,
+        revealCooldownTimer: 0,
+        followDistance: config.followDistance ?? 0,
+        speedBuffMultiplier: config.speedBuffMultiplier ?? 1,
+        hpBuffBonus: config.hpBuffBonus ?? 0
     };
 }
