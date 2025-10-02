@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grimm Dominion - Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./styles/main.css">
+</head>
+<body class="bg-gray-900 text-gray-200 flex flex-col h-screen p-4">
+    <div class="ui-panel p-4 rounded-lg mb-4 w-full max-w-5xl mx-auto text-center flex-shrink-0">
+        <h1 class="font-medieval text-3xl text-purple-300">Grimm Dominion - Prototype</h1>
+        <p class="text-gray-400">Status: <span class="font-semibold text-green-400">Milestone 2</span> | Current Step: <span class="font-semibold text-yellow-400">Inventory Management</span></p>
+    </div>
+
+    <div id="gameContainer" class="w-full max-w-5xl mx-auto flex-grow relative rounded-lg overflow-hidden">
+        <canvas id="gameCanvas"></canvas>
+
+        <div class="absolute bottom-4 left-4 flex items-end space-x-2">
+            <div class="ui-panel p-2 rounded-lg flex flex-col space-y-2" style="width: 250px;">
+                <div class="flex items-center space-x-2 w-full">
+                    <span class="font-medieval text-lg text-yellow-400">Gold</span>
+                    <span id="heroGoldText" class="font-bold text-lg flex-grow text-yellow-200 text-center">0</span>
+                </div>
+                <div class="flex items-center space-x-2 w-full">
+                    <span class="font-medieval text-lg text-green-400">Health</span>
+                    <div class="flex-grow h-4 rounded-md bar-bg">
+                        <div id="heroHealthBar" class="h-full rounded-sm health-bar-fill"></div>
+                    </div>
+                    <span id="heroHealthText" class="font-bold text-sm w-24 text-center">100/100</span>
+                </div>
+            </div>
+            <div id="inventoryPanel" class="ui-panel p-2 rounded-lg grid grid-cols-6 gap-2"></div>
+        </div>
+
+        <div id="shopPanel" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ui-panel p-4 rounded-lg w-96 z-20">
+            <h2 class="font-medieval text-2xl text-center text-yellow-300 mb-4">Secret Tavern</h2>
+            <div id="shopItemsContainer" class="flex flex-col space-y-2"></div>
+        </div>
+
+        <div id="tooltipPanel" class="hidden absolute ui-panel p-2 rounded-md text-sm pointer-events-none z-50"></div>
+
+        <div id="gameOverScreen" class="hidden absolute inset-0 bg-black bg-opacity-75 flex flex-col justify-center items-center z-30">
+            <h2 class="font-medieval text-6xl text-red-500">You Have Perished</h2>
+            <p class="text-xl mt-4">Refresh to try again.</p>
+        </div>
+
+        <div id="draggedItemIcon" class="item-icon hidden"></div>
+    </div>
+
+    <script type="module" src="./scripts/main.js"></script>
+</body>
+</html>
