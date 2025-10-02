@@ -133,7 +133,7 @@ export function updateUI() {
         castleProbeBar.style.width = `${progress * 100}%`;
         castleProbeBar.style.background =
             progress > 0 ? 'linear-gradient(90deg, #f87171, #b91c1c)' : 'linear-gradient(90deg, #22d3ee, #38bdf8)';
-        castleProbeLabel.textContent = progress > 0 ? `${Math.round(progress * 100)}%` : 'Calm';
+        castleProbeLabel.textContent = `${Math.round(progress * 100)}%`;
         castleProbeLabel.classList.toggle('text-red-300', progress > 0);
         castleProbeLabel.classList.toggle('text-gray-300', progress === 0);
     }

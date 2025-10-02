@@ -17,74 +17,59 @@
     <div id="gameContainer" class="w-full max-w-5xl mx-auto flex-grow relative rounded-lg overflow-hidden">
         <canvas id="gameCanvas"></canvas>
 
-        <div id="hudOverlay" class="absolute top-4 left-1/2 -translate-x-1/2 z-20 w-[95%] max-w-4xl">
-            <div class="ui-panel p-4 rounded-xl unified-hud">
-                <div class="unified-hud-grid">
-                    <div class="hud-section space-y-3">
-                        <div class="text-xs uppercase tracking-widest text-gray-400">Run Status</div>
-                        <div class="flex justify-between text-sm">
-                            <span>Time Survived</span>
-                            <span id="runTimeText" class="font-semibold text-gray-100">00:00</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span>Villages Saved</span>
-                            <span id="runVillagesSaved" class="font-semibold text-green-300">0/3</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span>Villages Lost</span>
-                            <span id="runVillagesLost" class="font-semibold text-red-300">0/2</span>
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs uppercase tracking-widest text-gray-400">
-                                <span>Castle Probe</span>
-                                <span id="castleProbeLabel" class="font-semibold text-gray-300">Calm</span>
-                            </div>
-                            <div class="h-2 rounded-sm bar-bg mt-1 overflow-hidden">
-                                <div id="castleProbeProgress" class="h-full rounded-sm" style="width: 0%;"></div>
-                            </div>
-                        </div>
-                        <div id="runObjectiveText" class="text-xs text-yellow-200 text-center tracking-wide"></div>
-                    </div>
-
-                    <div class="hud-section space-y-3">
-                        <div class="text-xs uppercase tracking-widest text-gray-400">Hero Status</div>
-                        <div class="flex items-center justify-between">
-                            <span class="font-medieval text-lg text-yellow-400">Gold</span>
-                            <span id="heroGoldText" class="font-bold text-lg text-yellow-200">0</span>
-                        </div>
-                        <div>
-                            <div class="flex items-center justify-between text-sm">
-                                <span class="font-medieval text-green-400">Health</span>
-                                <span id="heroHealthText" class="font-semibold">100/100</span>
-                            </div>
-                            <div class="h-4 rounded-md bar-bg mt-1">
-                                <div id="heroHealthBar" class="h-full rounded-sm health-bar-fill"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="flex items-center justify-between text-sm">
-                                <span class="font-medieval text-red-300">Detection</span>
-                                <span id="detectionMeterText" class="font-bold text-xs tracking-widest text-red-200">HIDDEN</span>
-                            </div>
-                            <div class="h-3 rounded-md bar-bg mt-1">
-                                <div id="detectionMeterFill" class="h-full rounded-sm detection-bar-fill"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="text-xs uppercase tracking-widest text-gray-400 mb-1">Inventory</div>
-                            <div id="inventoryPanel" class="inventory-grid"></div>
-                        </div>
-                    </div>
-
-                    <div id="phasePanel" class="hud-section phase-panel text-right space-y-2">
-                        <div class="text-xs uppercase tracking-widest text-gray-400">Phase</div>
-                        <div id="phaseName" class="font-medieval text-2xl text-phase-accent">Calm</div>
-                        <div id="phaseTimer" class="text-sm text-gray-300">00:00</div>
-                        <div class="text-xs text-gray-400 leading-relaxed">
-                            Maintain stealth while the dominion gathers strength.
-                        </div>
-                    </div>
+        <div id="hudOverlay" class="absolute inset-0 z-20 pointer-events-none">
+            <div id="heroStatusPanel" class="hud-section hud-top-left pointer-events-auto">
+                <div class="hud-label">Hero</div>
+                <div class="hud-row">
+                    <span class="hud-metric">Gold</span>
+                    <span id="heroGoldText" class="hud-value text-yellow-200">0</span>
                 </div>
+                <div class="hud-row">
+                    <span class="hud-metric">Health</span>
+                    <span id="heroHealthText" class="hud-value">100/100</span>
+                </div>
+                <div class="hud-bar">
+                    <div id="heroHealthBar" class="hud-bar-fill health-bar-fill"></div>
+                </div>
+                <div class="hud-row">
+                    <span class="hud-metric">Stealth</span>
+                    <span id="detectionMeterText" class="hud-value text-red-200">HIDDEN</span>
+                </div>
+                <div class="hud-bar hud-bar-thin">
+                    <div id="detectionMeterFill" class="hud-bar-fill detection-bar-fill"></div>
+                </div>
+            </div>
+
+            <div id="phasePanel" class="hud-section phase-panel hud-top-right pointer-events-auto">
+                <div class="hud-label text-right">Phase</div>
+                <div class="phase-stack">
+                    <div id="phaseName" class="phase-title"></div>
+                    <div id="phaseTimer" class="phase-timer">00:00</div>
+                </div>
+                <div class="phase-castle-block">
+                    <div id="castleProbeLabel" class="phase-probe-state"></div>
+                    <div class="hud-bar hud-bar-thin phase-probe-bar">
+                        <div id="castleProbeProgress" class="hud-bar-fill" style="width: 0%;"></div>
+                    </div>
+                    <div id="runObjectiveText" class="phase-objective"></div>
+                </div>
+            </div>
+
+            <div class="run-summary-bar">
+                <div class="run-tally run-tally-saved">
+                    <div id="runVillagesSaved" class="tally-value">0/3</div>
+                    <div class="tally-label">Saved</div>
+                </div>
+                <div id="runTimeText" class="run-time">00:00</div>
+                <div class="run-tally run-tally-lost">
+                    <div id="runVillagesLost" class="tally-value">0/2</div>
+                    <div class="tally-label">Lost</div>
+                </div>
+            </div>
+
+            <div id="inventoryDock" class="hud-section inventory-panel hud-bottom-center pointer-events-auto">
+                <div class="hud-label text-center">Inventory</div>
+                <div id="inventoryPanel" class="inventory-grid"></div>
             </div>
         </div>
 
