@@ -40,6 +40,7 @@ const DEFAULT_ENCOUNTER_PHASES = [
     }
 ];
 
+
 const FALLBACK_PHASE = {
     id: 'unknown',
     name: 'Calm',
@@ -199,6 +200,16 @@ export function initializeGameState(canvas) {
     cloneShopItems();
 }
 
+function getMinionSpawnPoint() {
+    const castleCenterX = gameState.castle.x + gameState.castle.width / 2;
+    const castleCenterY = gameState.castle.y + gameState.castle.height / 2;
+    const angle = Math.random() * Math.PI * 2;
+    const radius = Math.max(gameState.castle.width, gameState.castle.height) * 0.75 + 40 + Math.random() * 60;
+    const x = clamp(castleCenterX + Math.cos(angle) * radius, 0, gameState.world.width);
+    const y = clamp(castleCenterY + Math.sin(angle) * radius, 0, gameState.world.height);
+    return { x, y };
+}
+
 export function resetHeroTarget() {
     gameState.hero.targetX = gameState.hero.x;
     gameState.hero.targetY = gameState.hero.y;
@@ -211,10 +222,11 @@ export function cloneShopItems() {
 export function createScout(options = {}) {
     const { assignment = 'PATROL', targetVillageId = null } = options;
 
-    let patrolCenterX = Math.random() * WORLD.width;
-    let patrolCenterY = Math.random() * WORLD.height;
-    let targetX = Math.random() * WORLD.width;
-    let targetY = Math.random() * WORLD.height;
+    const spawnPoint = getMinionSpawnPoint();
+    let patrolCenterX = spawnPoint.x;
+    let patrolCenterY = spawnPoint.y;
+    let targetX = spawnPoint.x;
+    let targetY = spawnPoint.y;
 
     if (assignment === 'RAID' && targetVillageId) {
         const targetVillage = gameState.villages.find((village) => village.id === targetVillageId);
@@ -227,27 +239,43 @@ export function createScout(options = {}) {
             targetY = clamp(targetVillage.y + (Math.random() - 0.5) * 120, 0, WORLD.height);
         }
     } else {
+        const patrolRadius = SCOUT_STATS.patrolRadius ?? 200;
+        patrolCenterX = clamp(patrolCenterX + (Math.random() - 0.5) * patrolRadius, 0, WORLD.width);
+        patrolCenterY = clamp(patrolCenterY + (Math.random() - 0.5) * patrolRadius, 0, WORLD.height);
         targetX = clamp(
-            patrolCenterX + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius,
+            patrolCenterX + (Math.random() - 0.5) * 2 * patrolRadius,
             0,
             WORLD.width
         );
         targetY = clamp(
-            patrolCenterY + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius,
+            patrolCenterY + (Math.random() - 0.5) * 2 * patrolRadius,
             0,
             WORLD.height
         );
     }
 
-    return {
-        x: gameState.castle.x + gameState.castle.width / 2,
-        y: gameState.castle.y + gameState.castle.height / 2
-    };
+    return createMinion('scout', {
+        assignment,
+        targetVillageId,
+        patrolCenterX,
+        patrolCenterY,
+        targetX,
+        targetY,
+        spawnPoint
+    });
 }
 
-export function createMinion(role = 'scout') {
+export function createMinion(role = 'scout', overrides = {}) {
     const config = MINION_TYPES[role] || MINION_TYPES.scout;
-    const spawnPoint = getMinionSpawnPoint();
+    const spawnPoint = overrides.spawnPoint || getMinionSpawnPoint();
+
+    const assignment = overrides.assignment ?? 'PATROL';
+    const targetVillageId = overrides.targetVillageId ?? null;
+    const patrolCenterX = overrides.patrolCenterX ?? spawnPoint.x;
+    const patrolCenterY = overrides.patrolCenterY ?? spawnPoint.y;
+    const targetX = overrides.targetX ?? patrolCenterX;
+    const targetY = overrides.targetY ?? patrolCenterY;
+
     return {
         id: Math.random(),
         role: config.role,
@@ -262,7 +290,7 @@ export function createMinion(role = 'scout') {
         isBuffed: false,
         assignment,
         targetVillageId,
-        state: 'PATROLLING',
+        state: overrides.state ?? 'PATROLLING',
         patrolCenterX,
         patrolCenterY,
         targetX,
@@ -281,13 +309,23 @@ export function createMinion(role = 'scout') {
         healAmount: config.healAmount ?? null,
         healRadius: config.healRadius ?? null,
         healCooldown: config.healCooldown ?? null,
-        healCooldownTimer: config.healCooldown ?? 0,
+        healCooldownTimer: 0,
         revealDuration: config.revealDuration ?? null,
         revealCooldown: config.revealCooldown ?? null,
         revealCooldownTimer: 0,
         followDistance: config.followDistance ?? 0,
         speedBuffMultiplier: config.speedBuffMultiplier ?? 1,
-        hpBuffBonus: config.hpBuffBonus ?? 0
+        hpBuffBonus: config.hpBuffBonus ?? 0,
+        detectionLevel: 0,
+        noiseInvestigationTimer: 0,
+        searchTimer: 0,
+        facingAngle: Math.random() * Math.PI * 2,
+        sightRange: config.sightRange,
+        criticalSightRange: config.criticalSightRange,
+        visionCone: config.visionCone,
+        detectionRate: config.detectionRate,
+        detectionDecayRate: config.detectionDecay,
+        detectionLoseRate: config.detectionLoseRate
     };
 }
 
