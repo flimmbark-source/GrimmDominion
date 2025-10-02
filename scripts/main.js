@@ -8,6 +8,7 @@ import { updateWorldTextEffects } from './effects.js';
 import { updateCamera } from './camera.js';
 import { draw } from './render.js';
 import { initializeDirector, updateDirector } from './director.js';
+import { updateRunState } from './run-conditions.js';
 
 function spawnScoutsForPhase() {
     const phase = getCurrentEncounterPhase();
@@ -94,12 +95,15 @@ function gameLoop(timestamp) {
     updateWorldTextEffects(deltaTime);
 
     updateDirector(deltaTime);
+    updateRunState(deltaTime);
 
     updateCamera();
     updateUI();
     draw();
 
-    requestAnimationFrame(gameLoop);
+    if (!gameState.gameOver) {
+        requestAnimationFrame(gameLoop);
+    }
 }
 
 function initialize() {
@@ -113,6 +117,12 @@ function initialize() {
     setupInputHandlers();
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
+    const restartButton = document.getElementById('runSummaryRestart');
+    if (restartButton) {
+        restartButton.addEventListener('click', () => {
+            window.location.reload();
+        });
+    }
     requestAnimationFrame(gameLoop);
 }
 
