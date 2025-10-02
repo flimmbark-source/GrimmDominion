@@ -1,4 +1,4 @@
-import { GAME_CONFIG, SCOUT_STATS } from './constants.js';
+import { GAME_CONFIG, SCOUT_STATS, NOISE_CONFIG } from './constants.js';
 import { gameState } from './state.js';
 
 export function draw() {
@@ -69,6 +69,17 @@ export function draw() {
 
     ctx.fillStyle = gameState.hero.color;
     ctx.fillRect(gameState.hero.x, gameState.hero.y, gameState.hero.width, gameState.hero.height);
+
+    gameState.noisePings.forEach((ping) => {
+        const progress = Math.min(1, ping.age / NOISE_CONFIG.pingLifetime);
+        const radius = 30 + progress * NOISE_CONFIG.visualMaxRadius;
+        const alpha = Math.max(0, 0.45 - progress * 0.35);
+        ctx.beginPath();
+        ctx.arc(ping.x, ping.y, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(250, 214, 165, ${alpha})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    });
 
     gameState.projectiles.forEach((projectile) => {
         ctx.beginPath();

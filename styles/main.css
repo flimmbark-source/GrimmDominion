@@ -33,6 +33,22 @@ canvas {
     transition: width 0.2s ease-out;
 }
 
+.detection-bar-bg {
+    background-color: #221018;
+    border: 1px solid #7a1b3a;
+}
+
+.detection-bar-fill {
+    background: linear-gradient(90deg, #5c1e5c, #c32f4b);
+    transition: width 0.15s ease-out, background 0.2s ease-out;
+    box-shadow: 0 0 6px rgba(195, 47, 75, 0.35);
+}
+
+.detection-bar-fill.alert {
+    background: linear-gradient(90deg, #c32f4b, #ffae00);
+    box-shadow: 0 0 12px rgba(243, 156, 18, 0.6);
+}
+
 .shop-button {
     background-color: #4a3a2a;
     border: 1px solid #7a5c4b;

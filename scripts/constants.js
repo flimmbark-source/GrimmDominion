@@ -8,6 +8,14 @@ export const GAME_CONFIG = {
     sellPriceModifier: 0.5
 };
 
+export const DETECTION_CONFIG = {
+    fillRatePerScout: 0.45,
+    decayRate: 0.65,
+    alertThreshold: 0.85,
+    resetThreshold: 0.1,
+    noiseUiEchoTime: 2.5
+};
+
 export const HERO_BASE_STATS = {
     x: WORLD.width / 2 + 400,
     y: WORLD.height / 2 + 300,
@@ -21,7 +29,9 @@ export const HERO_BASE_STATS = {
     attackDamage: 20,
     attackCooldown: 1,
     attackRange: 300,
-    projectileSpeed: 7
+    projectileSpeed: 7,
+    sprintMultiplier: 1.6,
+    sprintNoiseInterval: 1.1
 };
 
 export const CASTLE = {
@@ -57,7 +67,19 @@ export const SCOUT_STATS = {
     hpBuffBonus: 60,
     villageAttackDamage: 5,
     villageAttackCooldown: 1,
-    heroAttackCooldown: 1.5
+    heroAttackCooldown: 1.5,
+    lostSightTolerance: 2.5
+};
+
+export const NOISE_CONFIG = {
+    sprintStrength: 0.6,
+    attackStrength: 1,
+    pingLifetime: 4,
+    attractionRadius: 700,
+    attractionThreshold: 0.25,
+    dwellTime: 1.8,
+    arrivalThreshold: 45,
+    visualMaxRadius: 160
 };
 
 export const MILITIA_STATS = {

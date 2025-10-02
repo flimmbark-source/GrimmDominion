@@ -44,6 +44,21 @@ function setupInputHandlers() {
         tooltip.style.top = `${event.clientY + 15}px`;
         updateDraggedIconPosition(event.clientX, event.clientY);
     });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Shift' && !gameState.gameOver) {
+            if (!gameState.hero.isSprinting) {
+                gameState.hero.sprintNoiseTimer = 0;
+            }
+            gameState.hero.isSprinting = true;
+        }
+    });
+
+    document.addEventListener('keyup', (event) => {
+        if (event.key === 'Shift') {
+            gameState.hero.isSprinting = false;
+        }
+    });
 }
 
 let lastTimestamp = 0;

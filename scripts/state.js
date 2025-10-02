@@ -12,7 +12,8 @@ import {
     VILLAGERS_PER_VILLAGE,
     MILITIA_PER_VILLAGE,
     SCOUT_STATS,
-    MILITIA_STATS
+    MILITIA_STATS,
+    DETECTION_CONFIG
 } from './constants.js';
 
 export const gameState = {
@@ -31,7 +32,15 @@ export const gameState = {
     villages: [],
     worldTextEffects: [],
     spawnTimer: GAME_CONFIG.darkLordSpawnCooldown,
-    gameOver: false
+    gameOver: false,
+    detection: {
+        level: 0,
+        watchers: 0,
+        isAlert: false,
+        noiseEchoTimer: 0,
+        resetThreshold: DETECTION_CONFIG.resetThreshold
+    },
+    noisePings: []
 };
 
 function createHero() {
@@ -40,7 +49,9 @@ function createHero() {
         targetX: HERO_BASE_STATS.x,
         targetY: HERO_BASE_STATS.y,
         attackTimer: 0,
-        inventory: new Array(GAME_CONFIG.inventorySize).fill(null)
+        inventory: new Array(GAME_CONFIG.inventorySize).fill(null),
+        isSprinting: false,
+        sprintNoiseTimer: HERO_BASE_STATS.sprintNoiseInterval
     };
 }
 
@@ -123,6 +134,14 @@ export function initializeGameState(canvas) {
     gameState.projectiles = [];
     gameState.militiaProjectiles = [];
     gameState.worldTextEffects = [];
+    gameState.noisePings = [];
+    gameState.detection = {
+        level: 0,
+        watchers: 0,
+        isAlert: false,
+        noiseEchoTimer: 0,
+        resetThreshold: DETECTION_CONFIG.resetThreshold
+    };
     cloneShopItems();
 }
 
@@ -153,6 +172,9 @@ export function createScout() {
         patrolCenterY: Math.random() * WORLD.height,
         villageAttackTarget: null,
         villageAttackCooldown: 0,
-        heroAttackCooldown: 0
+        heroAttackCooldown: 0,
+        lostSightTimer: 0,
+        noiseTarget: null,
+        noiseDwellTimer: 0
     };
 }

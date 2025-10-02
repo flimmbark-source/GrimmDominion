@@ -23,6 +23,7 @@ Grimm Dominion is a top-down strategy prototype where players defend the realm f
 - **Reward Loop** – Saving a village rewards the hero with gold and celebratory world text effects. Militia victories without hero aid trigger alternate messages, keeping the world reactive.
 - **Shops & Upgrades** – Approach the Secret Tavern to open the shop and purchase permanent stat upgrades that immediately populate the hero’s inventory slots.
 - **Inventory Management** – Drag and drop item icons to reorder upgrades within the hero’s inventory grid. Visual feedback tracks the dragged item and slot targets.
+- **Stealth Pressure** – A detection meter fills when scouts maintain line of sight. Sprinting or attacking emits noise pings that can lure patrols away, but breaking sight quickly bleeds danger back to safety.
 
 ## User Interface
 - **HUD** – Displays current gold and a dynamic health bar that updates every frame based on the hero’s stats.
