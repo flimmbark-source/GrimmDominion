@@ -18,6 +18,16 @@ export function draw() {
         ctx.fillRect(forest.x, forest.y, forest.width, forest.height);
     });
 
+    gameState.noisePings.forEach((ping) => {
+        const progress = Math.min(1, ping.age / ping.lifespan);
+        const radius = ping.radius * (0.6 + 0.5 * (1 - progress));
+        ctx.beginPath();
+        ctx.arc(ping.x, ping.y, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(230, 220, 120, ${0.2 * (1 - progress)})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    });
+
     gameState.villages.forEach((village) => {
         ctx.fillStyle = '#6b4f3a';
         ctx.beginPath();
@@ -91,14 +101,26 @@ export function draw() {
     });
 
     gameState.scouts.forEach((scout) => {
-        if (scout.role === 'scout' && scout.state === 'PATROLLING') {
+        const detectionRatio = Math.max(0, Math.min(1, scout.detectionLevel ?? 0));
+        const shouldShowCone = scout.state !== 'ATTACKING_VILLAGE';
+        if (shouldShowCone && scout.sightRange && scout.visionCone) {
+            const coneMultiplier = scout.state === 'CHASING' ? 1.2 : 1;
+            const halfCone = (scout.visionCone * coneMultiplier) / 2;
             ctx.beginPath();
-            ctx.arc(scout.x, scout.y, scout.sightRange, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(255, 255, 0, 0.1)';
-            ctx.stroke();
+            ctx.moveTo(scout.x, scout.y);
+            ctx.arc(
+                scout.x,
+                scout.y,
+                scout.sightRange,
+                (scout.facingAngle ?? 0) - halfCone,
+                (scout.facingAngle ?? 0) + halfCone
+            );
+            ctx.closePath();
+            ctx.fillStyle = `rgba(255, 255, 120, ${0.05 + detectionRatio * 0.25})`;
+            ctx.fill();
             ctx.beginPath();
             ctx.arc(scout.x, scout.y, scout.criticalSightRange, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
+            ctx.fillStyle = `rgba(255, 120, 120, ${0.08 + detectionRatio * 0.3})`;
             ctx.fill();
         }
         if (scout.role === 'priest' && scout.healRadius) {
@@ -121,6 +143,24 @@ export function draw() {
             barWidth * (scout.hp / scout.maxHp),
             5
         );
+        const detectionBarWidth = barWidth;
+        ctx.fillStyle = 'rgba(40, 40, 40, 0.8)';
+        ctx.fillRect(scout.x - detectionBarWidth / 2, scout.y - scout.radius - 4, detectionBarWidth, 4);
+        if (detectionRatio > 0) {
+            const detectionColor =
+                detectionRatio > 0.8
+                    ? '#ff5252'
+                    : detectionRatio > 0.45
+                    ? '#ffb347'
+                    : '#6ee7b7';
+            ctx.fillStyle = detectionColor;
+            ctx.fillRect(
+                scout.x - detectionBarWidth / 2,
+                scout.y - scout.radius - 4,
+                detectionBarWidth * detectionRatio,
+                4
+            );
+        }
     });
 
     gameState.worldTextEffects.forEach((effect) => {

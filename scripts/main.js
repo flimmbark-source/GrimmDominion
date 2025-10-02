@@ -48,6 +48,24 @@ function setupInputHandlers() {
         tooltip.style.top = `${event.clientY + 15}px`;
         updateDraggedIconPosition(event.clientX, event.clientY);
     });
+
+    const handleSprint = (event) => {
+        if (event.key !== 'Shift') {
+            return;
+        }
+        const isKeyDown = event.type === 'keydown';
+        if (gameState.hero) {
+            gameState.hero.isSprinting = isKeyDown;
+        }
+    };
+
+    window.addEventListener('keydown', handleSprint);
+    window.addEventListener('keyup', handleSprint);
+    window.addEventListener('blur', () => {
+        if (gameState.hero) {
+            gameState.hero.isSprinting = false;
+        }
+    });
 }
 
 let lastTimestamp = 0;

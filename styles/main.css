@@ -33,6 +33,11 @@ canvas {
     transition: width 0.2s ease-out;
 }
 
+.detection-bar-fill {
+    background: linear-gradient(90deg, #38bdf8, #22d3ee);
+    transition: width 0.2s ease-out, background 0.2s ease-out;
+}
+
 .shop-button {
     background-color: #4a3a2a;
     border: 1px solid #7a5c4b;

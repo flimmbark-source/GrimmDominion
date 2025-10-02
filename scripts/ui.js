@@ -1,4 +1,4 @@
-import { gameState, getEncounterPhaseStatus } from './state.js';
+import { gameState, getEncounterPhaseStatus, getDetectionThreat } from './state.js';
 import { updateShopButtons } from './shop.js';
 
 export function createInventorySlots() {
@@ -49,6 +49,8 @@ export function updateUI() {
     const phaseName = document.getElementById('phaseName');
     const phaseTimer = document.getElementById('phaseTimer');
     const phaseAccent = document.getElementById('phasePanel');
+    const detectionFill = document.getElementById('detectionMeterFill');
+    const detectionText = document.getElementById('detectionMeterText');
 
     healthBar.style.width = `${(gameState.hero.hp / gameState.hero.maxHp) * 100}%`;
     healthText.textContent = `${Math.ceil(gameState.hero.hp)}/${Math.ceil(gameState.hero.maxHp)}`;
@@ -74,5 +76,27 @@ export function updateUI() {
             .toString()
             .padStart(2, '0');
         phaseTimer.textContent = `${minutes}:${seconds}`;
+    }
+
+    if (detectionFill && detectionText) {
+        const { level, label } = getDetectionThreat();
+        const clamped = Math.max(0, Math.min(1, level));
+        detectionFill.style.width = `${clamped * 100}%`;
+        let colorStart = '#38bdf8';
+        let colorEnd = '#22d3ee';
+        if (clamped >= 0.8) {
+            colorStart = '#ef4444';
+            colorEnd = '#b91c1c';
+        } else if (clamped >= 0.5) {
+            colorStart = '#f97316';
+            colorEnd = '#ea580c';
+        } else if (clamped >= 0.25) {
+            colorStart = '#facc15';
+            colorEnd = '#f59e0b';
+        }
+        detectionFill.style.background = `linear-gradient(90deg, ${colorStart}, ${colorEnd})`;
+        detectionText.textContent = label.toUpperCase();
+        detectionText.style.color =
+            clamped >= 0.8 ? '#fca5a5' : clamped >= 0.5 ? '#fde68a' : clamped > 0.25 ? '#fef08a' : '#bbf7d0';
     }
 }
