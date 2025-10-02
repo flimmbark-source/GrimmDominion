@@ -32,13 +32,15 @@ function computeCooldown(patrolDeficit, redVillageCount) {
 }
 
 function pickRaidVillage(redVillages) {
+    const viableVillages = gameState.villages.filter((village) => !village.hasFallen);
+
     if (redVillages.length > 0) {
         return redVillages[Math.floor(Math.random() * redVillages.length)];
     }
-    if (gameState.villages.length === 0) {
+    if (viableVillages.length === 0) {
         return null;
     }
-    return gameState.villages[Math.floor(Math.random() * gameState.villages.length)];
+    return viableVillages[Math.floor(Math.random() * viableVillages.length)];
 }
 
 export function initializeDirector() {

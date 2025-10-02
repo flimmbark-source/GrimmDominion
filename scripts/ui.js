@@ -1,5 +1,6 @@
 import { gameState, getEncounterPhaseStatus, getDetectionThreat } from './state.js';
 import { updateShopButtons } from './shop.js';
+import { RUN_OBJECTIVES } from './constants.js';
 
 export function createInventorySlots() {
     const container = document.getElementById('inventoryPanel');
@@ -41,6 +42,15 @@ export function drawInventory() {
     }
 }
 
+function formatRunClock(totalSeconds) {
+    const seconds = Math.max(0, Math.floor(totalSeconds));
+    const minutes = Math.floor(seconds / 60)
+        .toString()
+        .padStart(2, '0');
+    const remainder = (seconds % 60).toString().padStart(2, '0');
+    return `${minutes}:${remainder}`;
+}
+
 export function updateUI() {
     const healthBar = document.getElementById('heroHealthBar');
     const healthText = document.getElementById('heroHealthText');
@@ -51,6 +61,12 @@ export function updateUI() {
     const phaseAccent = document.getElementById('phasePanel');
     const detectionFill = document.getElementById('detectionMeterFill');
     const detectionText = document.getElementById('detectionMeterText');
+    const runTimeText = document.getElementById('runTimeText');
+    const runVillagesSaved = document.getElementById('runVillagesSaved');
+    const runVillagesLost = document.getElementById('runVillagesLost');
+    const castleProbeBar = document.getElementById('castleProbeProgress');
+    const castleProbeLabel = document.getElementById('castleProbeLabel');
+    const objectiveText = document.getElementById('runObjectiveText');
 
     healthBar.style.width = `${(gameState.hero.hp / gameState.hero.maxHp) * 100}%`;
     healthText.textContent = `${Math.ceil(gameState.hero.hp)}/${Math.ceil(gameState.hero.maxHp)}`;
@@ -98,5 +114,31 @@ export function updateUI() {
         detectionText.textContent = label.toUpperCase();
         detectionText.style.color =
             clamped >= 0.8 ? '#fca5a5' : clamped >= 0.5 ? '#fde68a' : clamped > 0.25 ? '#fef08a' : '#bbf7d0';
+    }
+
+    if (runTimeText) {
+        runTimeText.textContent = formatRunClock(gameState.elapsedTime);
+    }
+
+    if (runVillagesSaved) {
+        runVillagesSaved.textContent = `${gameState.villagesSaved}/${RUN_OBJECTIVES.villagesToSave}`;
+    }
+
+    if (runVillagesLost) {
+        runVillagesLost.textContent = `${gameState.villagesLost}/${RUN_OBJECTIVES.maxVillageLosses}`;
+    }
+
+    if (castleProbeBar && castleProbeLabel) {
+        const progress = Math.min(1, gameState.castleProbeTimer / RUN_OBJECTIVES.castleProbeDuration);
+        castleProbeBar.style.width = `${progress * 100}%`;
+        castleProbeBar.style.background =
+            progress > 0 ? 'linear-gradient(90deg, #f87171, #b91c1c)' : 'linear-gradient(90deg, #22d3ee, #38bdf8)';
+        castleProbeLabel.textContent = progress > 0 ? `${Math.round(progress * 100)}%` : 'Calm';
+        castleProbeLabel.classList.toggle('text-red-300', progress > 0);
+        castleProbeLabel.classList.toggle('text-gray-300', progress === 0);
+    }
+
+    if (objectiveText) {
+        objectiveText.textContent = `Goal: Save ${RUN_OBJECTIVES.villagesToSave} villages by ${RUN_OBJECTIVES.survivalMinutes}:00`;
     }
 }

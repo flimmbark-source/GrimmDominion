@@ -35,7 +35,14 @@ export const gameState = {
     director: null,
     gameOver: false,
     noisePings: [],
-    noisePingIdCounter: 0
+    noisePingIdCounter: 0,
+    elapsedTime: 0,
+    villagesLost: 0,
+    villagesSaved: 0,
+    castleProbeTimer: 0,
+    castleProbeSourceId: null,
+    runOutcome: null,
+    runOutcomeReason: null
 };
 
 function clamp(value, min, max) {
@@ -77,7 +84,9 @@ function createVillage() {
         militia: [],
         isUnderAttack: false,
         attackers: new Set(),
-        heroHasHelped: false
+        heroHasHelped: false,
+        hasFallen: false,
+        saveCount: 0
     };
 
     for (let i = 0; i < HUTS_PER_VILLAGE; i += 1) {
@@ -137,6 +146,13 @@ export function initializeGameState(canvas) {
     gameState.director = null;
     gameState.noisePings = [];
     gameState.noisePingIdCounter = 0;
+    gameState.elapsedTime = 0;
+    gameState.villagesLost = 0;
+    gameState.villagesSaved = 0;
+    gameState.castleProbeTimer = 0;
+    gameState.castleProbeSourceId = null;
+    gameState.runOutcome = null;
+    gameState.runOutcomeReason = null;
     cloneShopItems();
 }
 

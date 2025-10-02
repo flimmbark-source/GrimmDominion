@@ -176,3 +176,13 @@ export const VILLAGE_COUNT = 4;
 export const HUTS_PER_VILLAGE = 3;
 export const VILLAGERS_PER_VILLAGE = 5;
 export const MILITIA_PER_VILLAGE = 2;
+
+export const RUN_OBJECTIVES = {
+    survivalMinutes: 15,
+    hardTimeLimitMinutes: 18,
+    villagesToSave: 3,
+    maxVillageLosses: 2,
+    castleProbeRadius: 220,
+    castleProbeDuration: 12,
+    castleProbeDecayRate: 0.6
+};

@@ -1,6 +1,7 @@
 import { GAME_CONFIG, MILITIA_STATS, SCOUT_STATS, MINION_TYPES } from './constants.js';
 import { gameState } from './state.js';
 import { distance, isPointInRect } from './utils.js';
+import { handleHeroDefeat, registerVillageLoss, registerVillageSave } from './run-conditions.js';
 
 function getHeroCenter() {
     return {
@@ -425,7 +426,12 @@ export function updateScoutsAI(deltaTime) {
             const targetVillage = scout.targetVillageId
                 ? gameState.villages.find((village) => village.id === scout.targetVillageId)
                 : null;
-            if (targetVillage) {
+            if (targetVillage && targetVillage.hasFallen) {
+                scout.assignment = 'PATROL';
+                scout.targetVillageId = null;
+                scout.patrolCenterX = scout.x;
+                scout.patrolCenterY = scout.y;
+            } else if (targetVillage) {
                 const distToVillage = distance(targetVillage.x, targetVillage.y, scout.x, scout.y);
                 const calmVillage = !targetVillage.isUnderAttack && targetVillage.attackers.size === 0;
                 if (calmVillage && distToVillage < SCOUT_STATS.patrolRadius * 0.5) {
@@ -456,6 +462,9 @@ export function updateScoutsAI(deltaTime) {
                 scout.noiseInvestigationTimer = 0;
             } else {
                 for (const village of gameState.villages) {
+                    if (village.hasFallen) {
+                        continue;
+                    }
                     const targets =
                         scout.role === 'tank'
                             ? [...village.huts, ...village.villagers]
@@ -698,8 +707,7 @@ export function handleCollisionsAndDeaths() {
 
     if (gameState.hero.hp <= 0) {
         gameState.hero.hp = 0;
-        gameState.gameOver = true;
-        document.getElementById('gameOverScreen').classList.remove('hidden');
+        handleHeroDefeat('hero_fell');
     }
 
     for (let i = gameState.scouts.length - 1; i >= 0; i -= 1) {
@@ -711,6 +719,7 @@ export function handleCollisionsAndDeaths() {
                     if (village.attackers.size === 0 && village.isUnderAttack) {
                         village.isUnderAttack = false;
                         if (village.heroHasHelped) {
+                            registerVillageSave(village);
                             gameState.hero.gold += GAME_CONFIG.villageGoldReward;
                             gameState.worldTextEffects.push({
                                 text: 'Saved!',
@@ -754,6 +763,18 @@ export function handleCollisionsAndDeaths() {
         for (let i = village.militia.length - 1; i >= 0; i -= 1) {
             if (village.militia[i].hp <= 0) {
                 village.militia.splice(i, 1);
+            }
+        }
+
+        if (!village.hasFallen) {
+            const hutsStanding = village.huts.some((hut) => hut.hp > 0);
+            if (!hutsStanding) {
+                registerVillageLoss(village, 'structures_destroyed');
+                return;
+            }
+
+            if (village.villagers.length === 0) {
+                registerVillageLoss(village, 'villagers_slain');
             }
         }
     });
