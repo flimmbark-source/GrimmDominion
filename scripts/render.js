@@ -1,4 +1,4 @@
-import { SCOUT_STATS } from './constants.js';
+import { GAME_CONFIG } from './constants.js';
 import { gameState } from './state.js';
 
 export function draw() {
@@ -61,7 +61,8 @@ export function draw() {
     ctx.textAlign = 'center';
     ctx.fillText('Castle', gameState.castle.x + gameState.castle.width / 2, gameState.castle.y + gameState.castle.height / 2 + 10);
 
-    const spawnRatio = Math.min(1, gameState.spawnTimer / (gameState.spawnCooldown || 1));
+    const spawnWindow = gameState.director ? gameState.director.cooldownDuration : GAME_CONFIG.darkLordSpawnCooldown;
+    const spawnRatio = spawnWindow > 0 ? Math.min(1, gameState.spawnTimer / spawnWindow) : 1;
     ctx.fillStyle = '#333';
     ctx.fillRect(gameState.castle.x, gameState.castle.y - 20, gameState.castle.width, 10);
     ctx.fillStyle = '#8a2be2';
@@ -69,6 +70,11 @@ export function draw() {
 
     ctx.fillStyle = gameState.hero.color;
     ctx.fillRect(gameState.hero.x, gameState.hero.y, gameState.hero.width, gameState.hero.height);
+    if (gameState.hero.revealTimer > 0) {
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.9)';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(gameState.hero.x - 4, gameState.hero.y - 4, gameState.hero.width + 8, gameState.hero.height + 8);
+    }
 
     gameState.projectiles.forEach((projectile) => {
         ctx.beginPath();
@@ -85,15 +91,21 @@ export function draw() {
     });
 
     gameState.scouts.forEach((scout) => {
-        if (scout.state === 'PATROLLING') {
+        if (scout.role === 'scout' && scout.state === 'PATROLLING') {
             ctx.beginPath();
-            ctx.arc(scout.x, scout.y, SCOUT_STATS.sightRange, 0, Math.PI * 2);
+            ctx.arc(scout.x, scout.y, scout.sightRange, 0, Math.PI * 2);
             ctx.strokeStyle = 'rgba(255, 255, 0, 0.1)';
             ctx.stroke();
             ctx.beginPath();
-            ctx.arc(scout.x, scout.y, SCOUT_STATS.criticalSightRange, 0, Math.PI * 2);
+            ctx.arc(scout.x, scout.y, scout.criticalSightRange, 0, Math.PI * 2);
             ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
             ctx.fill();
+        }
+        if (scout.role === 'priest' && scout.healRadius) {
+            ctx.beginPath();
+            ctx.arc(scout.x, scout.y, scout.healRadius, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(180, 220, 255, 0.08)';
+            ctx.stroke();
         }
         ctx.beginPath();
         ctx.arc(scout.x, scout.y, scout.radius, 0, Math.PI * 2);

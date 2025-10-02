@@ -1,20 +1,132 @@
-import { GAME_CONFIG, MILITIA_STATS, SCOUT_STATS } from './constants.js';
+import { GAME_CONFIG, MILITIA_STATS } from './constants.js';
 import { gameState } from './state.js';
 import { distance, isPointInRect } from './utils.js';
 
-function canScoutSeeHero(scout) {
-    const distToHero = distance(gameState.hero.x, gameState.hero.y, scout.x, scout.y);
-    if (distToHero <= SCOUT_STATS.criticalSightRange) {
+function getHeroCenter() {
+    return {
+        x: gameState.hero.x + gameState.hero.width / 2,
+        y: gameState.hero.y + gameState.hero.height / 2
+    };
+}
+
+function canMinionSeeHero(minion) {
+    const heroCenter = getHeroCenter();
+    const distToHero = distance(heroCenter.x, heroCenter.y, minion.x, minion.y);
+    if (distToHero <= minion.criticalSightRange) {
         return true;
     }
-    if (distToHero > SCOUT_STATS.sightRange) {
+    if (distToHero > minion.sightRange) {
         return false;
     }
     const heroInForest = gameState.forests.some((forest) => isPointInRect(gameState.hero, forest));
     return !heroInForest;
 }
 
+function getTargetPosition(target) {
+    if (typeof target.width === 'number' && typeof target.height === 'number') {
+        return { x: target.x + target.width / 2, y: target.y + target.height / 2 };
+    }
+    return { x: target.x, y: target.y };
+}
+
+function findNearestAlly(minion) {
+    let nearest = null;
+    let bestScore = Infinity;
+    gameState.scouts.forEach((ally) => {
+        if (ally.id === minion.id) {
+            return;
+        }
+        const dist = distance(ally.x, ally.y, minion.x, minion.y);
+        const weight = ally.role === 'tank' ? 0.6 : 1;
+        const score = dist * weight;
+        if (score < bestScore) {
+            bestScore = score;
+            nearest = ally;
+        }
+    });
+    return nearest;
+}
+
+function getFollowPoint(minion, ally) {
+    if (!ally) {
+        return { x: gameState.hero.x, y: gameState.hero.y };
+    }
+    const followDistance = minion.followDistance || 0;
+    if (followDistance <= 0) {
+        return { x: ally.x, y: ally.y };
+    }
+    const dx = ally.x - minion.x;
+    const dy = ally.y - minion.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    const offsetX = (dx / dist) * followDistance;
+    const offsetY = (dy / dist) * followDistance;
+    return {
+        x: ally.x - offsetX,
+        y: ally.y - offsetY
+    };
+}
+
+function shouldTankSwing(tank) {
+    const heroCenter = getHeroCenter();
+    if (distance(heroCenter.x, heroCenter.y, tank.x, tank.y) <= tank.swingRadius) {
+        return true;
+    }
+    for (const village of gameState.villages) {
+        for (const unit of village.militia) {
+            const { x, y } = getTargetPosition(unit);
+            if (distance(x, y, tank.x, tank.y) <= tank.swingRadius) {
+                return true;
+            }
+        }
+        for (const villager of village.villagers) {
+            const { x, y } = getTargetPosition(villager);
+            if (distance(x, y, tank.x, tank.y) <= tank.swingRadius + villager.radius) {
+                return true;
+            }
+        }
+        for (const hut of village.huts) {
+            const { x, y } = getTargetPosition(hut);
+            const hutRadius = Math.max(hut.width, hut.height) / 2;
+            if (distance(x, y, tank.x, tank.y) <= tank.swingRadius + hutRadius) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+function performTankSwing(tank) {
+    const heroCenter = getHeroCenter();
+    if (distance(heroCenter.x, heroCenter.y, tank.x, tank.y) <= tank.swingRadius) {
+        gameState.hero.hp -= tank.damage;
+    }
+
+    gameState.villages.forEach((village) => {
+        village.militia.forEach((militiaman) => {
+            const { x, y } = getTargetPosition(militiaman);
+            if (distance(x, y, tank.x, tank.y) <= tank.swingRadius) {
+                militiaman.hp = Math.max(0, militiaman.hp - tank.damage);
+            }
+        });
+        village.villagers.forEach((villager) => {
+            const { x, y } = getTargetPosition(villager);
+            if (distance(x, y, tank.x, tank.y) <= tank.swingRadius + villager.radius) {
+                villager.hp = Math.max(0, villager.hp - tank.damage * 0.75);
+            }
+        });
+        village.huts.forEach((hut) => {
+            const { x, y } = getTargetPosition(hut);
+            const hutRadius = Math.max(hut.width, hut.height) / 2;
+            if (distance(x, y, tank.x, tank.y) <= tank.swingRadius + hutRadius) {
+                hut.hp = Math.max(0, hut.hp - tank.damage * tank.structureDamageMultiplier);
+            }
+        });
+    });
+}
+
 export function updateHero(deltaTime) {
+    gameState.hero.revealTimer = Math.max(0, gameState.hero.revealTimer - deltaTime);
+
     const dx = gameState.hero.targetX - gameState.hero.x;
     const dy = gameState.hero.targetY - gameState.hero.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -54,7 +166,11 @@ export function updateMilitiaAI(deltaTime) {
         village.militia.forEach((militiaman) => {
             militiaman.attackTimer -= deltaTime;
             if (village.isUnderAttack) {
-                if (!militiaman.targetScout || militiaman.targetScout.hp <= 0 || !village.attackers.has(militiaman.targetScout.id)) {
+                if (
+                    !militiaman.targetScout ||
+                    militiaman.targetScout.hp <= 0 ||
+                    !village.attackers.has(militiaman.targetScout.id)
+                ) {
                     militiaman.targetScout = gameState.scouts.find((scout) => village.attackers.has(scout.id)) || null;
                 }
 
@@ -100,7 +216,8 @@ export function updateProjectiles(projectiles, speed, damage, owner) {
             projectile.y += (dy / dist) * speed;
         } else {
             projectiles.splice(i, 1);
-            target.hp -= damage;
+            const multiplier = target.damageMultipliers?.[owner] ?? 1;
+            target.hp = Math.max(0, target.hp - damage * multiplier);
             if (owner === 'hero') {
                 gameState.villages.forEach((village) => {
                     if (village.attackers.has(target.id)) {
@@ -113,22 +230,61 @@ export function updateProjectiles(projectiles, speed, damage, owner) {
 }
 
 export function updateScoutsAI(deltaTime) {
+    const heroCenter = getHeroCenter();
     gameState.scouts.forEach((scout) => {
         scout.villageAttackCooldown -= deltaTime;
         scout.heroAttackCooldown -= deltaTime;
+        if (typeof scout.healCooldownTimer === 'number') {
+            scout.healCooldownTimer -= deltaTime;
+        }
+        if (typeof scout.revealCooldownTimer === 'number') {
+            scout.revealCooldownTimer -= deltaTime;
+        }
+
+        if (scout.assignment === 'RAID' && scout.state === 'PATROLLING') {
+            const targetVillage = scout.targetVillageId
+                ? gameState.villages.find((village) => village.id === scout.targetVillageId)
+                : null;
+            if (targetVillage) {
+                const distToVillage = distance(targetVillage.x, targetVillage.y, scout.x, scout.y);
+                const calmVillage = !targetVillage.isUnderAttack && targetVillage.attackers.size === 0;
+                if (calmVillage && distToVillage < SCOUT_STATS.patrolRadius * 0.5) {
+                    scout.assignment = 'PATROL';
+                    scout.targetVillageId = null;
+                    scout.patrolCenterX = scout.x;
+                    scout.patrolCenterY = scout.y;
+                } else if (distToVillage > SCOUT_STATS.patrolRadius * 0.6) {
+                    scout.targetX = Math.max(
+                        0,
+                        Math.min(gameState.world.width, targetVillage.x + (Math.random() - 0.5) * 120)
+                    );
+                    scout.targetY = Math.max(
+                        0,
+                        Math.min(gameState.world.height, targetVillage.y + (Math.random() - 0.5) * 120)
+                    );
+                }
+            } else {
+                scout.assignment = 'PATROL';
+                scout.targetVillageId = null;
+            }
+        }
 
         if (scout.state === 'PATROLLING') {
-            if (canScoutSeeHero(scout)) {
+            if (canMinionSeeHero(scout)) {
                 scout.state = 'CHASING';
             } else {
                 for (const village of gameState.villages) {
-                    const targets = [...village.villagers, ...village.huts];
+                    const targets =
+                        scout.role === 'tank'
+                            ? [...village.huts, ...village.villagers]
+                            : [...village.villagers, ...village.huts];
                     for (const target of targets) {
                         if (target.hp <= 0) {
                             continue;
                         }
-                        const distToTarget = distance(target.x, target.y, scout.x, scout.y);
-                        if (distToTarget <= SCOUT_STATS.sightRange) {
+                        const { x: targetX, y: targetY } = getTargetPosition(target);
+                        const distToTarget = distance(targetX, targetY, scout.x, scout.y);
+                        if (distToTarget <= scout.sightRange) {
                             scout.state = 'ATTACKING_VILLAGE';
                             scout.villageAttackTarget = target;
                             village.isUnderAttack = true;
@@ -142,36 +298,74 @@ export function updateScoutsAI(deltaTime) {
                 }
             }
 
-            if (scout.state !== 'PATROLLING' && !scout.isBuffed) {
+            if (scout.state !== 'PATROLLING' && !scout.isBuffed && scout.speedBuffMultiplier > 1) {
                 scout.isBuffed = true;
-                scout.speed *= SCOUT_STATS.speedBuffMultiplier;
-                scout.maxHp += SCOUT_STATS.hpBuffBonus;
-                scout.hp += SCOUT_STATS.hpBuffBonus;
+                scout.speed *= scout.speedBuffMultiplier;
+                scout.maxHp += scout.hpBuffBonus;
+                scout.hp += scout.hpBuffBonus;
                 scout.color = '#ff3333';
             }
         }
 
         if (scout.state === 'CHASING') {
-            scout.targetX = gameState.hero.x;
-            scout.targetY = gameState.hero.y;
+            if (scout.role === 'priest') {
+                const ally = findNearestAlly(scout);
+                const followPoint = getFollowPoint(scout, ally);
+                scout.targetX = followPoint.x;
+                scout.targetY = followPoint.y;
+            } else {
+                scout.targetX = gameState.hero.x;
+                scout.targetY = gameState.hero.y;
+            }
         } else if (scout.state === 'ATTACKING_VILLAGE') {
             if (!scout.villageAttackTarget || scout.villageAttackTarget.hp <= 0) {
                 scout.state = 'PATROLLING';
                 scout.villageAttackTarget = null;
+                scout.assignment = 'PATROL';
+                scout.targetVillageId = null;
+                scout.patrolCenterX = scout.x;
+                scout.patrolCenterY = scout.y;
             } else {
-                scout.targetX = scout.villageAttackTarget.x;
-                scout.targetY = scout.villageAttackTarget.y;
-                const distToTarget = distance(scout.targetX, scout.targetY, scout.x, scout.y);
-                if (distToTarget < 30 && scout.villageAttackCooldown <= 0) {
-                    scout.villageAttackTarget.hp -= SCOUT_STATS.villageAttackDamage;
-                    scout.villageAttackCooldown = SCOUT_STATS.villageAttackCooldown;
+                const { x: targetX, y: targetY } = getTargetPosition(scout.villageAttackTarget);
+                scout.targetX = targetX;
+                scout.targetY = targetY;
+                const distToTarget = distance(targetX, targetY, scout.x, scout.y);
+                if (distToTarget < scout.attackRange && scout.villageAttackCooldown <= 0) {
+                    const isStructure = typeof scout.villageAttackTarget.width === 'number';
+                    const damageMultiplier = isStructure ? scout.structureDamageMultiplier : 1;
+                    scout.villageAttackTarget.hp = Math.max(
+                        0,
+                        scout.villageAttackTarget.hp - scout.villageAttackDamage * damageMultiplier
+                    );
+                    scout.villageAttackCooldown = scout.villageAttackCooldownMax;
                 }
             }
         } else if (scout.state === 'PATROLLING') {
             const distToTarget = distance(scout.targetX, scout.targetY, scout.x, scout.y);
             if (distToTarget < 20) {
-                scout.targetX = scout.patrolCenterX + (Math.random() - 0.5) * 2 * scout.patrolRadius;
-                scout.targetY = scout.patrolCenterY + (Math.random() - 0.5) * 2 * scout.patrolRadius;
+                if (scout.assignment === 'RAID') {
+                    const targetVillage = scout.targetVillageId
+                        ? gameState.villages.find((village) => village.id === scout.targetVillageId)
+                        : null;
+                    if (targetVillage) {
+                        scout.targetX = Math.max(
+                            0,
+                            Math.min(gameState.world.width, targetVillage.x + (Math.random() - 0.5) * 120)
+                        );
+                        scout.targetY = Math.max(
+                            0,
+                            Math.min(gameState.world.height, targetVillage.y + (Math.random() - 0.5) * 120)
+                        );
+                    } else {
+                        scout.assignment = 'PATROL';
+                        scout.targetVillageId = null;
+                        scout.targetX = scout.patrolCenterX + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
+                        scout.targetY = scout.patrolCenterY + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
+                    }
+                } else {
+                    scout.targetX = scout.patrolCenterX + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
+                    scout.targetY = scout.patrolCenterY + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
+                }
             }
         }
 
@@ -180,7 +374,7 @@ export function updateScoutsAI(deltaTime) {
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         let shouldMove = true;
-        if (scout.state === 'CHASING' && dist < 30 && scout.heroAttackCooldown > 0) {
+        if (scout.role !== 'priest' && scout.state === 'CHASING' && dist < scout.attackRange && scout.heroAttackCooldown > 0) {
             shouldMove = false;
         }
 
@@ -188,16 +382,79 @@ export function updateScoutsAI(deltaTime) {
             scout.x += (dx / dist) * scout.speed;
             scout.y += (dy / dist) * scout.speed;
         }
+
+        if (
+            scout.role === 'priest' &&
+            scout.healAmount &&
+            scout.healRadius &&
+            scout.healCooldown &&
+            scout.healCooldownTimer <= 0
+        ) {
+            let healedAny = false;
+            gameState.scouts.forEach((ally) => {
+                if (ally.id === scout.id) {
+                    return;
+                }
+                const allyDist = distance(ally.x, ally.y, scout.x, scout.y);
+                if (allyDist <= scout.healRadius) {
+                    const missingHp = ally.maxHp - ally.hp;
+                    if (missingHp > 0) {
+                        ally.hp = Math.min(ally.maxHp, ally.hp + scout.healAmount);
+                        healedAny = true;
+                    }
+                }
+            });
+            if (healedAny) {
+                scout.healCooldownTimer = scout.healCooldown;
+                gameState.worldTextEffects.push({
+                    text: '+',
+                    x: scout.x,
+                    y: scout.y - 20,
+                    color: 'rgba(200, 240, 255, 0.9)',
+                    font: 'bold 18px MedievalSharp',
+                    lifespan: 0.6
+                });
+            } else {
+                scout.healCooldownTimer = 1;
+            }
+        }
+
+        if (
+            scout.role === 'priest' &&
+            scout.revealDuration &&
+            scout.revealCooldown &&
+            scout.revealCooldownTimer <= 0 &&
+            canMinionSeeHero(scout)
+        ) {
+            gameState.hero.revealTimer = Math.max(gameState.hero.revealTimer, scout.revealDuration);
+            scout.revealCooldownTimer = scout.revealCooldown;
+            gameState.worldTextEffects.push({
+                text: 'Revealed!',
+                x: heroCenter.x,
+                y: heroCenter.y - 30,
+                color: 'rgba(255, 215, 0, 0.9)',
+                font: 'bold 18px MedievalSharp',
+                lifespan: 1
+            });
+        }
     });
 }
 
 export function handleCollisionsAndDeaths() {
+    const heroCenter = getHeroCenter();
     for (let i = gameState.scouts.length - 1; i >= 0; i -= 1) {
         const scout = gameState.scouts[i];
-        const distToHero = distance(scout.x, scout.y, gameState.hero.x + gameState.hero.width / 2, gameState.hero.y + gameState.hero.height / 2);
-        if (distToHero < scout.radius + gameState.hero.width / 2 && scout.heroAttackCooldown <= 0) {
-            gameState.hero.hp -= SCOUT_STATS.damage;
-            scout.heroAttackCooldown = SCOUT_STATS.heroAttackCooldown;
+        if (scout.role === 'tank') {
+            if (scout.heroAttackCooldown <= 0 && scout.swingRadius && shouldTankSwing(scout)) {
+                performTankSwing(scout);
+                scout.heroAttackCooldown = scout.heroAttackCooldownMax;
+            }
+        } else {
+            const distToHero = distance(scout.x, scout.y, heroCenter.x, heroCenter.y);
+            if (distToHero < scout.attackRange && scout.heroAttackCooldown <= 0) {
+                gameState.hero.hp -= scout.damage;
+                scout.heroAttackCooldown = scout.heroAttackCooldownMax;
+            }
         }
     }
 
@@ -254,6 +511,11 @@ export function handleCollisionsAndDeaths() {
         for (let i = village.villagers.length - 1; i >= 0; i -= 1) {
             if (village.villagers[i].hp <= 0) {
                 village.villagers.splice(i, 1);
+            }
+        }
+        for (let i = village.militia.length - 1; i >= 0; i -= 1) {
+            if (village.militia[i].hp <= 0) {
+                village.militia.splice(i, 1);
             }
         }
     });

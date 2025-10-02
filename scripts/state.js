@@ -11,9 +11,8 @@ import {
     HUTS_PER_VILLAGE,
     VILLAGERS_PER_VILLAGE,
     MILITIA_PER_VILLAGE,
-    SCOUT_STATS,
     MILITIA_STATS,
-    ENCOUNTER_PHASES
+    MINION_TYPES
 } from './constants.js';
 
 export const gameState = {
@@ -31,50 +30,13 @@ export const gameState = {
     forests: [],
     villages: [],
     worldTextEffects: [],
-    spawnTimer: GAME_CONFIG.darkLordSpawnCooldown,
-    spawnCooldown: GAME_CONFIG.darkLordSpawnCooldown,
-    encounterPhaseIndex: 0,
-    encounterPhaseElapsed: 0,
+    spawnTimer: 0,
+    director: null,
     gameOver: false
 };
 
-function applyEncounterPhaseSettings(phase) {
-    gameState.spawnCooldown = GAME_CONFIG.darkLordSpawnCooldown * phase.spawnCooldownMultiplier;
-    gameState.scouts.forEach((scout) => {
-        if (!scout.basePatrolRadius) {
-            scout.basePatrolRadius = SCOUT_STATS.patrolRadius;
-        }
-        scout.patrolRadius = scout.basePatrolRadius * phase.patrolDensityMultiplier;
-    });
-    if (gameState.spawnTimer > gameState.spawnCooldown) {
-        gameState.spawnTimer = gameState.spawnCooldown;
-    }
-}
-
-export function getCurrentEncounterPhase() {
-    return ENCOUNTER_PHASES[gameState.encounterPhaseIndex];
-}
-
-export function updateEncounterPhase(deltaTime) {
-    gameState.encounterPhaseElapsed += deltaTime;
-    let currentPhase = getCurrentEncounterPhase();
-    while (gameState.encounterPhaseElapsed >= currentPhase.duration) {
-        gameState.encounterPhaseElapsed -= currentPhase.duration;
-        gameState.encounterPhaseIndex = (gameState.encounterPhaseIndex + 1) % ENCOUNTER_PHASES.length;
-        currentPhase = getCurrentEncounterPhase();
-        applyEncounterPhaseSettings(currentPhase);
-    }
-}
-
-export function getEncounterPhaseStatus() {
-    const phase = getCurrentEncounterPhase();
-    const remaining = Math.max(0, phase.duration - gameState.encounterPhaseElapsed);
-    return {
-        phase,
-        elapsed: gameState.encounterPhaseElapsed,
-        remaining,
-        progress: phase.duration === 0 ? 1 : Math.min(1, gameState.encounterPhaseElapsed / phase.duration)
-    };
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
 }
 
 function createHero() {
@@ -83,6 +45,7 @@ function createHero() {
         targetX: HERO_BASE_STATS.x,
         targetY: HERO_BASE_STATS.y,
         attackTimer: 0,
+        revealTimer: 0,
         inventory: new Array(GAME_CONFIG.inventorySize).fill(null)
     };
 }
@@ -157,18 +120,16 @@ export function initializeGameState(canvas) {
     gameState.hero = createHero();
     gameState.camera.width = canvas.width;
     gameState.camera.height = canvas.height;
-    gameState.scouts = [];
-    gameState.projectiles = [];
-    gameState.militiaProjectiles = [];
-    gameState.worldTextEffects = [];
-    gameState.encounterPhaseIndex = 0;
-    gameState.encounterPhaseElapsed = 0;
-    applyEncounterPhaseSettings(getCurrentEncounterPhase());
-    gameState.spawnTimer = gameState.spawnCooldown;
+    gameState.spawnTimer = 0;
     gameState.gameOver = false;
 
     gameState.forests = Array.from({ length: FOREST_COUNT }, createForest);
     gameState.villages = Array.from({ length: VILLAGE_COUNT }, createVillage);
+    gameState.scouts = [];
+    gameState.projectiles = [];
+    gameState.militiaProjectiles = [];
+    gameState.worldTextEffects = [];
+    gameState.director = null;
     cloneShopItems();
 }
 
@@ -181,27 +142,85 @@ export function cloneShopItems() {
     gameState.shopItems = SHOP_ITEMS.map((item) => ({ ...item, effect: { ...item.effect } }));
 }
 
-export function createScout() {
-    const phase = getCurrentEncounterPhase();
+export function createScout(options = {}) {
+    const { assignment = 'PATROL', targetVillageId = null } = options;
+
+    let patrolCenterX = Math.random() * WORLD.width;
+    let patrolCenterY = Math.random() * WORLD.height;
+    let targetX = Math.random() * WORLD.width;
+    let targetY = Math.random() * WORLD.height;
+
+    if (assignment === 'RAID' && targetVillageId) {
+        const targetVillage = gameState.villages.find((village) => village.id === targetVillageId);
+        if (targetVillage) {
+            const approachAngle = Math.random() * Math.PI * 2;
+            const approachRadius = 180 + Math.random() * 120;
+            patrolCenterX = clamp(targetVillage.x + Math.cos(approachAngle) * approachRadius, 0, WORLD.width);
+            patrolCenterY = clamp(targetVillage.y + Math.sin(approachAngle) * approachRadius, 0, WORLD.height);
+            targetX = clamp(targetVillage.x + (Math.random() - 0.5) * 120, 0, WORLD.width);
+            targetY = clamp(targetVillage.y + (Math.random() - 0.5) * 120, 0, WORLD.height);
+        }
+    } else {
+        targetX = clamp(
+            patrolCenterX + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius,
+            0,
+            WORLD.width
+        );
+        targetY = clamp(
+            patrolCenterY + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius,
+            0,
+            WORLD.height
+        );
+    }
+
+    return {
+        x: gameState.castle.x + gameState.castle.width / 2,
+        y: gameState.castle.y + gameState.castle.height / 2
+    };
+}
+
+export function createMinion(role = 'scout') {
+    const config = MINION_TYPES[role] || MINION_TYPES.scout;
+    const spawnPoint = getMinionSpawnPoint();
     return {
         id: Math.random(),
-        x: gameState.castle.x + gameState.castle.width / 2,
-        y: gameState.castle.y + gameState.castle.height / 2,
-        radius: 10,
-        color: '#e24a4a',
-        hp: SCOUT_STATS.maxHp,
-        maxHp: SCOUT_STATS.maxHp,
-        speed: SCOUT_STATS.baseSpeed,
+        role: config.role,
+        x: spawnPoint.x,
+        y: spawnPoint.y,
+        radius: config.radius,
+        color: config.color,
+        hp: config.maxHp,
+        maxHp: config.maxHp,
+        speed: config.baseSpeed,
+        baseSpeed: config.baseSpeed,
         isBuffed: false,
+        assignment,
+        targetVillageId,
         state: 'PATROLLING',
-        targetX: Math.random() * WORLD.width,
-        targetY: Math.random() * WORLD.height,
-        patrolCenterX: Math.random() * WORLD.width,
-        patrolCenterY: Math.random() * WORLD.height,
-        basePatrolRadius: SCOUT_STATS.patrolRadius,
-        patrolRadius: SCOUT_STATS.patrolRadius * phase.patrolDensityMultiplier,
+        patrolCenterX,
+        patrolCenterY,
+        targetX,
+        targetY,
         villageAttackTarget: null,
         villageAttackCooldown: 0,
-        heroAttackCooldown: 0
+        villageAttackCooldownMax: config.villageAttackCooldown,
+        villageAttackDamage: config.villageAttackDamage,
+        heroAttackCooldown: 0,
+        heroAttackCooldownMax: config.heroAttackCooldown,
+        attackRange: config.attackRange ?? config.radius + 20,
+        damage: config.damage,
+        damageMultipliers: { militia: 1, hero: 1, ...(config.damageMultipliers || {}) },
+        swingRadius: config.swingRadius ?? null,
+        structureDamageMultiplier: config.structureDamageMultiplier ?? 1,
+        healAmount: config.healAmount ?? null,
+        healRadius: config.healRadius ?? null,
+        healCooldown: config.healCooldown ?? null,
+        healCooldownTimer: config.healCooldown ?? 0,
+        revealDuration: config.revealDuration ?? null,
+        revealCooldown: config.revealCooldown ?? null,
+        revealCooldownTimer: 0,
+        followDistance: config.followDistance ?? 0,
+        speedBuffMultiplier: config.speedBuffMultiplier ?? 1,
+        hpBuffBonus: config.hpBuffBonus ?? 0
     };
 }

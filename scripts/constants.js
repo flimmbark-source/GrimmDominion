@@ -8,32 +8,26 @@ export const GAME_CONFIG = {
     sellPriceModifier: 0.5
 };
 
-export const ENCOUNTER_PHASES = [
-    {
-        name: 'Calm',
-        duration: 75,
-        spawnCooldownMultiplier: 1.35,
-        spawnCount: 1,
-        patrolDensityMultiplier: 1.35,
-        accentColor: '#7dc3ff'
-    },
-    {
-        name: 'Alert',
-        duration: 55,
-        spawnCooldownMultiplier: 1,
-        spawnCount: 2,
-        patrolDensityMultiplier: 1,
-        accentColor: '#ffd15c'
-    },
-    {
-        name: 'Hunt',
-        duration: 40,
-        spawnCooldownMultiplier: 0.65,
-        spawnCount: 3,
-        patrolDensityMultiplier: 0.7,
-        accentColor: '#ff7d7d'
-    }
-];
+export const DIRECTOR_CONFIG = {
+    targetPatrolCount: 6,
+    initialPatrolCount: 4,
+    spawnCost: 3,
+    startingEnergy: 6,
+    maxEnergy: 24,
+    energyTricklePerSecond: 0.9,
+    energyDeficitBoost: 1.1,
+    energyVillageUnderAttackBoost: 0.7,
+    baseSpawnCooldown: 7,
+    minSpawnCooldown: 2.5,
+    deficitCooldownBonus: 1,
+    redVillageCooldownBonus: 0.8,
+    basePatrolWeight: 1,
+    patrolDeficitWeight: 0.85,
+    baseRaidWeight: 0.55,
+    multiVillageRaidMultiplier: 2.2,
+    maxBatchSpawns: 3,
+    initialDelay: 3.5
+};
 
 export const HERO_BASE_STATS = {
     x: WORLD.width / 2 + 400,
@@ -73,19 +67,83 @@ export const SHOP_ITEMS = [
     { id: 'hp1', name: 'Tough Jerky', cost: 100, effect: { stat: 'maxHp', value: 25 }, description: '+25 Max HP', icon: '🍖' }
 ];
 
-export const SCOUT_STATS = {
-    maxHp: 40,
-    damage: 10,
-    sightRange: 400,
-    criticalSightRange: 80,
-    patrolRadius: 200,
-    baseSpeed: 1.8,
-    speedBuffMultiplier: 1.5,
-    hpBuffBonus: 60,
-    villageAttackDamage: 5,
-    villageAttackCooldown: 1,
-    heroAttackCooldown: 1.5
+export const MINION_TYPES = {
+    scout: {
+        role: 'scout',
+        color: '#e24a4a',
+        radius: 10,
+        maxHp: 40,
+        damage: 10,
+        sightRange: 400,
+        criticalSightRange: 80,
+        patrolRadius: 200,
+        baseSpeed: 1.8,
+        speedBuffMultiplier: 1.5,
+        hpBuffBonus: 60,
+        villageAttackDamage: 5,
+        villageAttackCooldown: 1,
+        heroAttackCooldown: 1.5,
+        attackRange: 30,
+        damageMultipliers: {
+            militia: 1,
+            hero: 1
+        }
+    },
+    tank: {
+        role: 'tank',
+        color: '#6b4b2d',
+        radius: 14,
+        maxHp: 220,
+        damage: 18,
+        sightRange: 320,
+        criticalSightRange: 60,
+        patrolRadius: 160,
+        baseSpeed: 1.1,
+        villageAttackDamage: 15,
+        villageAttackCooldown: 1.2,
+        heroAttackCooldown: 2.8,
+        attackRange: 45,
+        swingRadius: 70,
+        structureDamageMultiplier: 1.35,
+        damageMultipliers: {
+            militia: 0.35,
+            hero: 1
+        }
+    },
+    priest: {
+        role: 'priest',
+        color: '#b6a6ff',
+        radius: 10,
+        maxHp: 70,
+        damage: 6,
+        sightRange: 380,
+        criticalSightRange: 90,
+        patrolRadius: 180,
+        baseSpeed: 1.6,
+        villageAttackDamage: 3,
+        villageAttackCooldown: 1.5,
+        heroAttackCooldown: 2.2,
+        attackRange: 28,
+        healAmount: 15,
+        healRadius: 150,
+        healCooldown: 3.5,
+        revealDuration: 1.5,
+        revealCooldown: 5,
+        followDistance: 55,
+        damageMultipliers: {
+            militia: 1,
+            hero: 1
+        }
+    }
 };
+
+export const MINION_SPAWN_TABLE = [
+    { type: 'scout', weight: 0.55 },
+    { type: 'tank', weight: 0.25 },
+    { type: 'priest', weight: 0.2 }
+];
+
+export const SCOUT_STATS = MINION_TYPES.scout;
 
 export const MILITIA_STATS = {
     maxHp: 60,
