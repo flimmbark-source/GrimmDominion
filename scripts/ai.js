@@ -117,6 +117,34 @@ export function updateScoutsAI(deltaTime) {
         scout.villageAttackCooldown -= deltaTime;
         scout.heroAttackCooldown -= deltaTime;
 
+        if (scout.assignment === 'RAID' && scout.state === 'PATROLLING') {
+            const targetVillage = scout.targetVillageId
+                ? gameState.villages.find((village) => village.id === scout.targetVillageId)
+                : null;
+            if (targetVillage) {
+                const distToVillage = distance(targetVillage.x, targetVillage.y, scout.x, scout.y);
+                const calmVillage = !targetVillage.isUnderAttack && targetVillage.attackers.size === 0;
+                if (calmVillage && distToVillage < SCOUT_STATS.patrolRadius * 0.5) {
+                    scout.assignment = 'PATROL';
+                    scout.targetVillageId = null;
+                    scout.patrolCenterX = scout.x;
+                    scout.patrolCenterY = scout.y;
+                } else if (distToVillage > SCOUT_STATS.patrolRadius * 0.6) {
+                    scout.targetX = Math.max(
+                        0,
+                        Math.min(gameState.world.width, targetVillage.x + (Math.random() - 0.5) * 120)
+                    );
+                    scout.targetY = Math.max(
+                        0,
+                        Math.min(gameState.world.height, targetVillage.y + (Math.random() - 0.5) * 120)
+                    );
+                }
+            } else {
+                scout.assignment = 'PATROL';
+                scout.targetVillageId = null;
+            }
+        }
+
         if (scout.state === 'PATROLLING') {
             if (canScoutSeeHero(scout)) {
                 scout.state = 'CHASING';
@@ -158,6 +186,10 @@ export function updateScoutsAI(deltaTime) {
             if (!scout.villageAttackTarget || scout.villageAttackTarget.hp <= 0) {
                 scout.state = 'PATROLLING';
                 scout.villageAttackTarget = null;
+                scout.assignment = 'PATROL';
+                scout.targetVillageId = null;
+                scout.patrolCenterX = scout.x;
+                scout.patrolCenterY = scout.y;
             } else {
                 scout.targetX = scout.villageAttackTarget.x;
                 scout.targetY = scout.villageAttackTarget.y;
@@ -170,8 +202,29 @@ export function updateScoutsAI(deltaTime) {
         } else if (scout.state === 'PATROLLING') {
             const distToTarget = distance(scout.targetX, scout.targetY, scout.x, scout.y);
             if (distToTarget < 20) {
-                scout.targetX = scout.patrolCenterX + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
-                scout.targetY = scout.patrolCenterY + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
+                if (scout.assignment === 'RAID') {
+                    const targetVillage = scout.targetVillageId
+                        ? gameState.villages.find((village) => village.id === scout.targetVillageId)
+                        : null;
+                    if (targetVillage) {
+                        scout.targetX = Math.max(
+                            0,
+                            Math.min(gameState.world.width, targetVillage.x + (Math.random() - 0.5) * 120)
+                        );
+                        scout.targetY = Math.max(
+                            0,
+                            Math.min(gameState.world.height, targetVillage.y + (Math.random() - 0.5) * 120)
+                        );
+                    } else {
+                        scout.assignment = 'PATROL';
+                        scout.targetVillageId = null;
+                        scout.targetX = scout.patrolCenterX + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
+                        scout.targetY = scout.patrolCenterY + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
+                    }
+                } else {
+                    scout.targetX = scout.patrolCenterX + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
+                    scout.targetY = scout.patrolCenterY + (Math.random() - 0.5) * 2 * SCOUT_STATS.patrolRadius;
+                }
             }
         }
 

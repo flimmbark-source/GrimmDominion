@@ -8,6 +8,27 @@ export const GAME_CONFIG = {
     sellPriceModifier: 0.5
 };
 
+export const DIRECTOR_CONFIG = {
+    targetPatrolCount: 6,
+    initialPatrolCount: 4,
+    spawnCost: 3,
+    startingEnergy: 6,
+    maxEnergy: 24,
+    energyTricklePerSecond: 0.9,
+    energyDeficitBoost: 1.1,
+    energyVillageUnderAttackBoost: 0.7,
+    baseSpawnCooldown: 7,
+    minSpawnCooldown: 2.5,
+    deficitCooldownBonus: 1,
+    redVillageCooldownBonus: 0.8,
+    basePatrolWeight: 1,
+    patrolDeficitWeight: 0.85,
+    baseRaidWeight: 0.55,
+    multiVillageRaidMultiplier: 2.2,
+    maxBatchSpawns: 3,
+    initialDelay: 3.5
+};
+
 export const HERO_BASE_STATS = {
     x: WORLD.width / 2 + 400,
     y: WORLD.height / 2 + 300,
