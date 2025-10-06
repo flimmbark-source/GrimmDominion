@@ -1,4 +1,5 @@
 import type { Vec2 } from '../types';
+import { EnemyFrames, SpriteKeys } from '../assets/sprites';
 
 export type DLUnit = {
   sprite: Phaser.GameObjects.Sprite;
@@ -30,7 +31,14 @@ export class DarkLordAI {
       return false;
     }
     this.energy -= cost;
-    const sprite = this.scene.add.sprite(this.castlePos.x + 16, this.castlePos.y, 'tiles').setFrame(6);
+    const sprite = this.scene.add
+      .sprite(
+        this.castlePos.x + 16,
+        this.castlePos.y,
+        SpriteKeys.enemies,
+        EnemyFrames[kind]
+      )
+      .setOrigin(0.5, 0.9);
     const speed = { Scout: 70, Tank: 40, Priest: 55 }[kind];
     const vision = { Scout: 120, Tank: 80, Priest: 100 }[kind];
     this.units.push({ sprite, kind, speed, vision, state: 'Patrol' });
