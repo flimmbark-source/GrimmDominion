@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { HUD } from '../ui/HUD';
 import type { Vec2, Stats } from '../types';
+import { addChest } from '../world/chest';
+import { Noise, emitFootsteps } from '../systems/noise';
 
 type HeroSprite = Phaser.GameObjects.Sprite & {
   stats: Stats;
@@ -24,6 +26,8 @@ export class World extends Phaser.Scene {
   layer!: Phaser.Tilemaps.TilemapLayer;
   hero!: Phaser.GameObjects.Sprite & { stats: Stats; target?: Vec2; speed: number };
   marker!: Phaser.GameObjects.Rectangle;
+  private noiseOff?: () => void;
+  private _stepAccumulator = 0;
 
   constructor() {
     super('world');
@@ -86,13 +90,43 @@ export class World extends Phaser.Scene {
     const { spawnVillage, spawnFauna } = await import('../world/spawners');
     spawnVillage(this, 320, 160);
     spawnFauna(this, 6);
+
+    addChest(this, 320, 140);
+    addChest(this, 340, 180);
+
+    this.events.on('loot:gold', (gold: number) => {
+      this.hero.stats.gold += gold;
+    });
+
+    (this as any).DL = undefined;
+    this.noiseOff = Noise.on((event) => {
+      (this as any).DL?.units?.forEach((unit: any) => {
+        unit.lastHeard = event.pos;
+      });
+      (this.game as any).setAlert(event.kind === 'chest' ? 'Chest noise!' : 'Footsteps!');
+    });
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.noiseOff?.();
+    });
   }
 
   update(_time: number, dt: number): void {
     const hero = this.hero;
     if (!hero.target) {
       this.marker.setVisible(false);
+      this._stepAccumulator = 0;
       return;
+    }
+
+    if (!this._stepAccumulator) {
+      this._stepAccumulator = 0;
+    }
+
+    this._stepAccumulator += dt;
+    if (this._stepAccumulator > 500) {
+      emitFootsteps({ x: hero.x, y: hero.y });
+      this._stepAccumulator = 0;
     }
   }
 
