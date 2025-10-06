@@ -25,6 +25,25 @@ jobs:
       UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
     steps:
       - uses: actions/checkout@v3
+      - name: Setup Unity license
+        if: ${{ secrets.UNITY_LICENSE != '' }}
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        shell: bash
+        run: |
+          license_file="$RUNNER_TEMP/UnityLicense.ulf"
+          if printf '%s' "$UNITY_LICENSE" | base64 --decode > "$license_file" 2>/dev/null; then
+            echo "Detected base64-encoded Unity license secret."
+          else
+            printf '%s' "$UNITY_LICENSE" > "$license_file"
+          fi
+          chmod 600 "$license_file"
+          {
+            echo "UNITY_LICENSE<<'EOF'"
+            cat "$license_file"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+          echo "UNITY_LICENSE_FILE=$license_file" >> "$GITHUB_ENV"
       - name: Cache Unity Library
         uses: actions/cache@v3
         with:
