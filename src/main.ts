@@ -3,7 +3,7 @@ import { Boot } from './scenes/Boot';
 import { World } from './scenes/World';
 import { HUD } from './ui/HUD';
 
-new Phaser.Game({
+const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'app',
   width: 960,
@@ -12,3 +12,5 @@ new Phaser.Game({
   physics: { default: 'arcade', arcade: { debug: false } },
   scene: [Boot, World, HUD]
 });
+
+(window as any).game = game;
