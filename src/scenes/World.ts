@@ -32,7 +32,7 @@ export class World extends Phaser.Scene {
     super('world');
   }
 
-  create(): void {
+  async create(): Promise<void> {
     this.iso = {
       tileWidth: 64,
       tileHeight: 32,
@@ -90,6 +90,9 @@ export class World extends Phaser.Scene {
     this.darkLord = new DarkLordAI(this, { x: castle.x, y: castle.y });
     this.time.addEvent({ delay: 2000, loop: true, callback: () => this.darkLord.directorTick() });
     this.darkLord.spawn('Scout');
+    const { spawnVillage, spawnFauna } = await import('../world/spawners');
+    spawnVillage(this, 320, 160);
+    spawnFauna(this, 6);
   }
 
   update(_time: number, dt: number): void {
