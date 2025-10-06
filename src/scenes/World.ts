@@ -6,6 +6,7 @@ export class World extends Phaser.Scene {
   map!: Phaser.Tilemaps.Tilemap;
   layer!: Phaser.Tilemaps.TilemapLayer;
   hero!: Phaser.GameObjects.Sprite & { stats: Stats; target?: Vec2; speed: number };
+  marker!: Phaser.GameObjects.Rectangle;
 
   constructor() {
     super('world');
@@ -33,8 +34,22 @@ export class World extends Phaser.Scene {
       stealthMax: 100
     };
 
+    this.cameras.main.startFollow(this.hero, true, 0.15, 0.15);
+    this.cameras.main.setZoom(1.5);
+
+    this.input.mouse?.disableContextMenu();
+
+    this.marker = this.add.rectangle(0, 0, 8, 8, 0xffffff).setVisible(false);
+
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      if (p.rightButtonDown()) {
+        this.hero.target = undefined;
+        this.marker.setVisible(false);
+        return;
+      }
+
       this.hero.target = { x: p.worldX, y: p.worldY };
+      this.marker.setPosition(p.worldX, p.worldY).setVisible(true);
     });
 
     this.scene.launch('hud', { world: this });
@@ -54,6 +69,7 @@ export class World extends Phaser.Scene {
   update(_time: number, dt: number): void {
     const hero = this.hero;
     if (!hero.target) {
+      this.marker.setVisible(false);
       return;
     }
 
