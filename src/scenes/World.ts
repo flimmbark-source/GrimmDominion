@@ -5,6 +5,7 @@ import { addChest } from '../world/chest';
 import { Noise, emitFootsteps } from '../systems/noise';
 import { DarkLordAI } from '../ai/darkLord';
 import { stepDLUnits } from '../ai/search';
+import { HeroFrames, SettlementFrames, SpriteKeys } from '../assets/sprites';
 
 type HeroSprite = Phaser.GameObjects.Sprite & {
   stats: Stats;
@@ -54,7 +55,9 @@ export class World extends Phaser.Scene {
       y: this.iso.gridHeight / 2
     });
 
-    this.hero = this.add.sprite(heroStart.x, heroStart.y, 'hero-placeholder') as HeroSprite;
+    this.hero = this.add
+      .sprite(heroStart.x, heroStart.y, SpriteKeys.heroes, HeroFrames.goblinIdle)
+      as HeroSprite;
     this.hero.setOrigin(0.5, 0.9);
     this.physics.add.existing(this.hero);
     this.hero.speed = 3.5;
@@ -103,7 +106,10 @@ export class World extends Phaser.Scene {
 
     this.populateProps();
 
-    const castle = this.add.image(480, 240, 'tiles').setFrame(7).setScale(1.3);
+    const castle = this.add
+      .image(480, 240, SpriteKeys.settlements, SettlementFrames.castle)
+      .setOrigin(0.5, 0.9)
+      .setScale(1.1);
     this.darkLord = new DarkLordAI(this, { x: castle.x, y: castle.y });
     this.time.addEvent({ delay: 2000, loop: true, callback: () => this.darkLord.directorTick() });
     this.darkLord.spawn('Scout');
@@ -222,11 +228,21 @@ export class World extends Phaser.Scene {
   private populateProps(): void {
     const decorLayer = this.add.layer();
     const props = [
-      { key: 'prop-stone-placeholder', count: 6, depthOffset: 5 },
-      { key: 'prop-shrub-placeholder', count: 4, depthOffset: 12 }
+      {
+        key: SpriteKeys.settlements,
+        frame: SettlementFrames.stone,
+        count: 6,
+        depthOffset: 5
+      },
+      {
+        key: SpriteKeys.settlements,
+        frame: SettlementFrames.shrub,
+        count: 4,
+        depthOffset: 12
+      }
     ];
 
-    props.forEach(({ key, count, depthOffset }) => {
+    props.forEach(({ key, frame, count, depthOffset }) => {
       for (let i = 0; i < count; i++) {
         const cart = {
           x: Phaser.Math.FloatBetween(1, this.iso.gridWidth - 1),
@@ -234,7 +250,10 @@ export class World extends Phaser.Scene {
         };
         const screen = this.cartToScreen(cart);
         decorLayer.add(
-          this.add.image(screen.x, screen.y, key).setOrigin(0.5, 1).setDepth(screen.y + depthOffset)
+          this.add
+            .image(screen.x, screen.y, key, frame)
+            .setOrigin(0.5, 1)
+            .setDepth(screen.y + depthOffset)
         );
       }
     });
