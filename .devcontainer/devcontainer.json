@@ -1,0 +1,25 @@
+{
+  "name": "Grimm Dominion Unity Codespace",
+  "image": "ghcr.io/game-ci/unity3d:ubuntu-2022.3.21f1-base-3.0",
+  "features": {
+    "ghcr.io/devcontainers/features/git-lfs:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "mounts": [
+    "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached"
+  ],
+  "remoteEnv": {
+    "UNITY_VERSION": "2022.3.21f1"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "visualstudiotoolsforunity.vstuc",
+        "unity.unity-debug",
+        "github.vscode-github-actions"
+      ]
+    }
+  },
+  "postCreateCommand": ".devcontainer/scripts/post-create.sh"
+}
