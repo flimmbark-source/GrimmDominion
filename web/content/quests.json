@@ -1,0 +1,20 @@
+[
+  {
+    "id": "scout_roads",
+    "title": "Scout the Hidden Roads",
+    "description": "Send shades to reveal safe passages for the hero caravan. Avoid patrols to keep dread low.",
+    "reward": 3
+  },
+  {
+    "id": "steal_relic",
+    "title": "Steal Relic of Dawnspear",
+    "description": "Infiltrate the chapel during the eclipse to recover the relic before the paladins regroup.",
+    "reward": 5
+  },
+  {
+    "id": "bind_warlord",
+    "title": "Bind the Broken Warlord",
+    "description": "Subdue the marauding warlord with spectral chains so he may guard the dominion borders.",
+    "reward": 4
+  }
+]
