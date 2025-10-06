@@ -4,6 +4,8 @@
 - Browser-first vertical slice built with Phaser 3 and TypeScript, compiled with Vite for modern
   bundling and hot module replacement.
 - WebGL 2 is the primary rendering backend, with Canvas fallback for lower powered devices.
+- The prototype scene renders a fully navigable isometric battlefield representing the castle
+  plateau, haunted village, ancient shrine, and shadowed forest described in the world brief.
 - Target platforms: desktop browsers (Chrome, Firefox, Edge, Safari) with responsive layout support
   for tablets.
 

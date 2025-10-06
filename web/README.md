@@ -13,6 +13,12 @@ prototype so the experience can run directly inside GitHub Codespaces or any mod
    npm run dev --prefix web -- --host 0.0.0.0 --port 5173
    ```
 3. Open the forwarded port in the browser to view the slice. The prototype bootstraps a Phaser scene
+   that loads the battlefield layout, hero squads, and quest deck from JSON content files.
+
+### Controls
+- **Left Click:** Select a squad. Hold **Shift** to add/remove squads from the selection.
+- **Right Click:** Issue a move command to the highlighted tile. A warning ping appears if the tile
+  is blocked.
    that renders the overworld layout and quest deck from JSON content files.
 
 ## Scripts
@@ -23,10 +29,19 @@ prototype so the experience can run directly inside GitHub Codespaces or any mod
 - `npm run test --prefix web` – Execute the Vitest suite (placeholder until gameplay logic matures).
 
 ## Project Structure
-- `src/` – TypeScript source files. Phaser scenes live under `src/scenes/`.
+- `src/` – TypeScript source files. Phaser scenes live under `src/scenes/` and isometric helpers
+  under `src/iso/`.
 - `content/` – JSON data for quests, world regions, and encounter tuning.
 - `public/` – Static assets copied directly into the final bundle (sprites, audio, shaders).
 - `tests/` – Unit test entry point (to be filled out as systems migrate).
+
+## Prototype Features
+- Isometric ground tiles representing the castle plateau, haunted village, ancient shrine, shadowed
+  forest, and forward camp described in the world design doc.
+- Three hero squads (Knights, Witches, Goblins) with RTS-style selection and formation-based move
+  orders.
+- Contextual UI panels summarizing regional threat levels and the active quest deck for quick
+  scenario reference.
 
 ## Next Steps
 - Flesh out additional Phaser scenes for hero stealth runs and dark lord command phases.
