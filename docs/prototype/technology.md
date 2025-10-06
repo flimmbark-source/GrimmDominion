@@ -16,6 +16,23 @@
 - Addressables for streaming art assets and patching content without full client updates.
 - CI pipeline via GitHub Actions building Android/iOS dev builds nightly, running unit tests and integration smoke tests.
 
+## Codespaces Environment
+- Launch the repository in GitHub Codespaces using the provided `.devcontainer` definition, which
+  pulls the `ghcr.io/game-ci/unity3d:ubuntu-2022.3.21f1-base-3.0` image so the Unity 2022.3.21f1
+  editor and URP toolchain match the project baseline. The container installs the C# and Unity
+  debugger extensions and configures the workspace as a trusted Git directory.
+- On first boot the `post-create.sh` hook enables Git LFS, fetches tracked assets, and (when a
+  `PHOTON_UPM_TOKEN` secret is provided) writes `~/.upm/upmconfig.toml` so Unity can authenticate to
+  the Photon scoped registry for `com.photon.fusion.stub`.
+- Supply Unity license credentials as Codespaces secrets—either set `UNITY_LICENSE_CONTENT` with the
+  serialized `.ulf` text or provide `UNITY_SERIAL`, `UNITY_EMAIL`, and `UNITY_PASSWORD` so the script
+  can emit `.codespace-unity-env.example` for manual activation. The resulting license is stored
+  under `${HOME}/.local/share/unity3d/Unity/Unity_lic.ulf`.
+- Mirror CI operations locally by running the same batch mode commands outlined in the GitHub
+  Actions workflow (e.g., edit mode tests and Addressables builds) after `post-create` completes.
+  Environment variables such as `UNITY_LICENSE_CONTENT`, `UNITY_SERIAL`, and `PHOTON_UPM_TOKEN`
+  persist across terminals inside the Codespace, enabling headless builds.
+
 ## Telemetry & Analytics
 - Capture match length, role selection, win/loss, resource income rates, and objective completion times.
 - Use Unity Analytics or custom lightweight pipeline posting JSON to AWS API Gateway.
