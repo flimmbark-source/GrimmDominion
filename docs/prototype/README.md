@@ -10,3 +10,4 @@ This document organizes the scope required to build the Grimm Dominion vertical 
 - [Art & Audio](art_audio.md)
 - [Technology & Infrastructure](technology.md)
 - [Production Roadmap](roadmap.md)
+- [Vertical Slice Implementation Plan](implementation_plan.md)
