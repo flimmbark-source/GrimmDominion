@@ -66,6 +66,13 @@ export class HUD extends Phaser.Scene {
     const panelTop = height - panelHeight;
     const panelCenterY = panelTop + panelHeight / 2;
     const panelPadding = 24;
+    const panelBg = addSprite(width / 2, panelCenterY, SpriteKeys.effects, EffectFrames.hudPanel)
+      .setDisplaySize(width, panelHeight)
+      .setAlpha(0.92);
+    panelBg.setName('hud-panel');
+    addRect(width / 2, panelCenterY, width, panelHeight, 0xffffff, 0)
+      .setStrokeStyle(2, 0x1c2738)
+      .setAlpha(0.95);
 
     const abilityKeys = ['Q', 'W', 'E', 'R'];
     let abilitySlotSize = Phaser.Math.Clamp(width / 9, 64, 140);
@@ -104,17 +111,17 @@ export class HUD extends Phaser.Scene {
       abilityStartX = abilityLeftEdge + abilitySlotSize / 2;
     }
 
-    addRect(width / 2, panelCenterY, width, panelHeight, 0x060a12)
-      .setStrokeStyle(2, 0x1c2738)
-      .setAlpha(0.92);
-
     const heroPanelX = panelPadding + 60;
     const heroPanelY = height - 92;
-    addRect(heroPanelX, heroPanelY, 140, 128, 0x0b1724).setStrokeStyle(2, 0x2c425b).setAlpha(0.95);
+    addSprite(heroPanelX, heroPanelY, SpriteKeys.effects, EffectFrames.heroPanel)
+      .setDisplaySize(150, 140)
+      .setAlpha(0.95);
+    addRect(heroPanelX, heroPanelY, 150, 140, 0xffffff, 0)
+      .setStrokeStyle(2, 0x2c425b)
+      .setAlpha(0.95);
 
-    const portrait = addSprite(heroPanelX, heroPanelY - 6, SpriteKeys.effects, EffectFrames.chest)
+    const portrait = addSprite(heroPanelX, heroPanelY - 6, SpriteKeys.effects, EffectFrames.heroPortrait)
       .setDisplaySize(96, 96)
-      .setTint(0x8ca0bf)
       .setAlpha(0.95);
     addText(heroPanelX, portrait.y + 64, 'Lvl 12', { fontSize: '14px', color: '#f0d080' })
       .setOrigin(0.5, 0.5)
@@ -181,20 +188,44 @@ export class HUD extends Phaser.Scene {
     const abilityTrayHeight = abilitySlotSize + abilityTrayPadding;
     const abilityY = panelTop + panelHeight - abilityTrayHeight / 2 - 12;
     const trayWidth = abilityRightEdge - abilityLeftEdge + abilityTrayPadding * 2;
-    addRect(abilityLeftEdge + totalAbilityWidth / 2, abilityY, trayWidth, abilityTrayHeight, 0x08101a)
-      .setStrokeStyle(2, 0x284257)
+    addSprite(
+      abilityLeftEdge + totalAbilityWidth / 2,
+      abilityY,
+      SpriteKeys.effects,
+      EffectFrames.abilityTray
+    )
+      .setDisplaySize(trayWidth, abilityTrayHeight)
       .setAlpha(0.92);
+    addRect(
+      abilityLeftEdge + totalAbilityWidth / 2,
+      abilityY,
+      trayWidth,
+      abilityTrayHeight,
+      0xffffff,
+      0
+    )
+      .setStrokeStyle(2, 0x284257)
+      .setAlpha(0.95);
     const keyTagStyle = { fontSize: '12px', color: '#f9fbff' } as Phaser.Types.GameObjects.Text.TextStyle;
+    const abilityIconFrames = [
+      EffectFrames.abilitySmokeBomb,
+      EffectFrames.abilityDagger,
+      EffectFrames.abilityShadowStep,
+      EffectFrames.abilityValorSurge
+    ];
     abilityKeys.forEach((key, index) => {
       const x = abilityStartX + index * (abilitySlotSize + abilityGap);
-      addRect(x, abilityY, abilitySlotSize, abilitySlotSize, 0x0d1c29)
+      addSprite(x, abilityY, SpriteKeys.effects, EffectFrames.abilitySlot)
+        .setDisplaySize(abilitySlotSize, abilitySlotSize)
+        .setAlpha(0.95);
+      addRect(x, abilityY, abilitySlotSize, abilitySlotSize, 0xffffff, 0)
         .setStrokeStyle(2, 0x385b7a)
         .setAlpha(0.95);
       const iconSize = Math.max(abilitySlotSize - 12, abilitySlotSize * 0.65, 0);
-      const icon = addSprite(x, abilityY, SpriteKeys.effects, EffectFrames.chest)
+      const iconFrame = abilityIconFrames[index % abilityIconFrames.length];
+      const icon = addSprite(x, abilityY, SpriteKeys.effects, iconFrame)
         .setDisplaySize(iconSize, iconSize)
-        .setTint(0xbac3d1)
-        .setAlpha(0.92);
+        .setAlpha(0.95);
       icon.depth = 1;
       const keyTagWidth = Math.max(Math.min(26, abilitySlotSize - 6), 18);
       const keyTagHeight = Math.max(Math.min(18, abilitySlotSize - 8), 12);
@@ -205,11 +236,10 @@ export class HUD extends Phaser.Scene {
       const keyTagVerticalMargin = Math.max(Math.min(abilitySlotSize * 0.08, 10), 4);
       const keyTagX = x - abilitySlotSize / 2 + keyTagHorizontalMargin;
       const keyTagY = abilityY + abilitySlotSize / 2 - keyTagHeight / 2 - keyTagVerticalMargin;
-      addRect(keyTagX, keyTagY, keyTagWidth, keyTagHeight, 0x1a2b3b)
-        .setStrokeStyle(1, 0x385b7a)
-        .setOrigin(0, 0.5)
-        .setAlpha(0.92);
-      addText(keyTagX + keyTagWidth / 2, keyTagY, key, keyTagStyle).setOrigin(0.5, 0.5).setAlpha(0.95);
+      addSprite(keyTagX + keyTagWidth / 2, keyTagY, SpriteKeys.effects, EffectFrames.keyTag)
+        .setDisplaySize(keyTagWidth, keyTagHeight)
+        .setAlpha(0.95);
+      addText(keyTagX + keyTagWidth / 2, keyTagY, key, keyTagStyle).setOrigin(0.5, 0.5).setAlpha(0.98);
     });
 
     const inventoryTitleX = Math.min(width - panelPadding - 260, abilityRightEdge + 48);
@@ -230,11 +260,15 @@ export class HUD extends Phaser.Scene {
       for (let col = 0; col < inventoryCols; col++) {
         const slotX = inventoryStartX + col * inventorySpacing;
         const slotY = inventoryStartY + row * inventorySpacing;
-        addRect(slotX, slotY, 64, 64, 0x0d1c29).setStrokeStyle(2, 0x5a441e).setAlpha(0.9);
-        const slot = addSprite(slotX, slotY, SpriteKeys.effects, EffectFrames.chest)
-          .setDisplaySize(58, 58)
-          .setTint(0x8a7343)
+        addSprite(slotX, slotY, SpriteKeys.effects, EffectFrames.inventorySlot)
+          .setDisplaySize(64, 64)
           .setAlpha(0.92);
+        addRect(slotX, slotY, 64, 64, 0xffffff, 0)
+          .setStrokeStyle(2, 0x5a441e)
+          .setAlpha(0.9);
+        const slot = addSprite(slotX, slotY, SpriteKeys.effects, EffectFrames.inventoryPlaceholder)
+          .setDisplaySize(58, 58)
+          .setAlpha(0.95);
         this.inventorySlots.push(slot);
       }
     }
