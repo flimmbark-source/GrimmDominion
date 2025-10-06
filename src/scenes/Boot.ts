@@ -25,6 +25,8 @@ export class Boot extends Phaser.Scene {
       frameHeight: 128
     });
     this.load.setPath('');
+    this.load.image('tiles', 'tiles.png');
+    this.load.tilemapTiledJSON('world-map', 'tilemap.json');
   }
 
   create(): void {

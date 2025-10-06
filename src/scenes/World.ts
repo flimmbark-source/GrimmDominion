@@ -7,6 +7,31 @@ import { Noise, emitFootsteps } from '../systems/noise';
 import { DarkLordAI } from '../ai/darkLord';
 import { stepDLUnits } from '../ai/search';
 import { HeroFrames, SettlementFrames, SpriteKeys } from '../assets/sprites';
+import { applyTerrainStealth } from '../systems/stealth';
+
+const terrainAt = function (this: World, p: Vec2): 'grass' | 'forest' | 'road' {
+  if (!this.layer) {
+    return 'grass';
+  }
+
+  const cart = this.screenToCart(p);
+  if (!cart) {
+    return 'grass';
+  }
+
+  const tile = this.layer.getTileAt(Math.floor(cart.x), Math.floor(cart.y));
+  if (!tile) {
+    return 'grass';
+  }
+
+  if (tile.index === 2) {
+    return 'forest';
+  }
+  if (tile.index === 3) {
+    return 'road';
+  }
+  return 'grass';
+};
 
 type HeroSprite = Phaser.GameObjects.Sprite & {
   stats: Stats;
@@ -32,6 +57,9 @@ export class World extends Phaser.Scene {
   private noiseOff?: () => void;
   private _stepAccumulator = 0;
   private darkLord!: DarkLordAI;
+  private map!: Phaser.Tilemaps.Tilemap;
+  private layer!: Phaser.Tilemaps.TilemapLayer;
+  private _objective!: { goal: number };
   private heroBaseSpeed = 3.5;
 
   constructor() {
@@ -39,13 +67,18 @@ export class World extends Phaser.Scene {
   }
 
   async create(): Promise<void> {
+    this.map = this.make.tilemap({ key: 'world-map' });
+    const tileset = this.map.addTilesetImage('tiles', 'tiles');
+    this.layer = this.map.createLayer('ground', tileset, 0, 0);
+    this.layer.setVisible(false);
+
     this.iso = {
       tileWidth: 64,
       tileHeight: 32,
       halfTileWidth: 32,
       halfTileHeight: 16,
-      gridWidth: 24,
-      gridHeight: 18,
+      gridWidth: this.map.width,
+      gridHeight: this.map.height,
       origin: { x: 512, y: 120 }
     };
 
@@ -135,16 +168,39 @@ export class World extends Phaser.Scene {
       }
     });
 
+    this._objective = { goal: 50 };
+
     this.events.on('loot:gold', (gold: number) => {
       this.hero.stats.gold += gold;
+      if (this.hero.stats.gold >= this._objective.goal) {
+        (this.game as any).setAlert('Objective complete! Escape!');
+      }
     });
 
-    (this as any).DL = undefined;
+    this.time.addEvent({
+      delay: 1000,
+      loop: true,
+      callback: () => {
+        (this.game as any).setAlert(
+          `Goal: Steal ${this._objective.goal}g | You: ${this.hero.stats.gold}g`
+        );
+      }
+    });
+
+    (this as any).DL = this.darkLord;
     this.noiseOff = Noise.on((event) => {
-      (this as any).DL?.units?.forEach((unit: any) => {
-        unit.lastHeard = event.pos;
+      this.darkLord.lastPing = { ...event.pos };
+      const message = event.kind === 'chest' ? 'Chest noise!' : 'Footsteps!';
+      this.darkLord.units.forEach((unit) => {
+        const distance = Math.hypot(unit.sprite.x - event.pos.x, unit.sprite.y - event.pos.y);
+        if (distance <= event.radius) {
+          unit.lastHeard = { ...event.pos };
+          if (unit.state !== 'Chase') {
+            unit.state = 'Investigate';
+          }
+        }
       });
-      (this.game as any).setAlert(event.kind === 'chest' ? 'Chest noise!' : 'Footsteps!');
+      (this.game as any).setAlert(message);
     });
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -166,6 +222,7 @@ export class World extends Phaser.Scene {
       this.marker.setVisible(false);
       this._stepAccumulator = 0;
       hero.setDepth(hero.y + 10);
+      applyTerrainStealth(this.hero, (p) => terrainAt.call(this, p));
       return;
     }
 
@@ -179,6 +236,7 @@ export class World extends Phaser.Scene {
       this._stepAccumulator = 0;
       this.marker.setVisible(false);
       hero.setDepth(hero.y + 10);
+      applyTerrainStealth(this.hero, (p) => terrainAt.call(this, p));
       return;
     }
 
@@ -203,6 +261,8 @@ export class World extends Phaser.Scene {
       emitFootsteps({ x: hero.x, y: hero.y });
       this._stepAccumulator = 0;
     }
+
+    applyTerrainStealth(this.hero, (p) => terrainAt.call(this, p));
   }
 
   private buildIsometricGround(): Phaser.Geom.Rectangle {
