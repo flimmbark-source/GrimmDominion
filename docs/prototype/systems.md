@@ -15,7 +15,9 @@
   - *Scout Imp:* Fast, low damage, high vision. Patrol paths and report sightings.
   - *Bonecrusher:* Tanky melee unit with gate-guard behavior. Reacts to pings by converging.
   - *Hex Priest:* Ranged support that channels debuffs, vulnerable when interrupted.
-- **Behavior Trees:** Authored in Unity using scriptable nodes. Server sends intention packets; clients simulate for responsiveness with reconciliation.
+- **Behavior Trees:** Authored as JSON-driven behavior graphs interpreted by the Phaser AI runtime.
+  Server hooks remain optional; the client simulates intentions locally with reconciliation stubs for
+  future networking.
 - **Escalation Rules:** Unlock stronger minion waves at 5 and 10-minute marks, triggered by castle energy thresholds.
 
 ## Combat & Progression

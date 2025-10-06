@@ -2,7 +2,7 @@
 
 ## Repository Structure
 - `Design_Document/Design_Document`: Primary game design reference (PDF). Keep it unchanged unless a new authoritative design is provided.
-- `docs/prototype/`: Planning hub for the vertical slice prototype. Each Markdown file drills into a specific discipline:
+- `docs/prototype/`: Planning hub for the browser-based vertical slice. Each Markdown file drills into a specific discipline:
   - `README.md`: Entry point linking the specialist documents below.
   - `vision.md`: Goals, success metrics, and scope guardrails.
   - `roles.md`: Dark Lord and hero role loops, including economy notes.
@@ -19,16 +19,18 @@ Add new documentation under `docs/` with topical subfolders and cross-link them 
 - Prefer Markdown (`.md`) for design and planning artifacts. Use level-1 headings for file titles and level-2 headings for top-level sections.
 - Wrap lines at ~100 characters for readability. Use bullet or numbered lists for structured content.
 - When adding code in future sprints:
-  - Follow Unity C# conventions: PascalCase for types/methods, camelCase for locals/parameters, `I`-prefixed interface names.
-  - Keep public APIs documented with XML comments. Group related scripts under `Assets/Scripts/<Feature>`.
+  - Follow TypeScript/Phaser conventions: PascalCase for classes, camelCase for locals/parameters, and
+    co-locate modules under `web/src/<Feature>`.
+  - Document public APIs with TSDoc comments. Group related gameplay systems under
+    `web/src/game/systems/<Feature>`.
   - Avoid `try/catch` around imports (per global instructions).
 - For JSON/YAML configs, use two-space indentation and double quotes for keys/strings.
 
 ## Testing Protocols
 - Documentation changes: No automated tests required; proofread for clarity and broken links.
-- Unity gameplay code (when present):
-  - Run play mode/unit tests via `Unity -runTests -testPlatform editmode` before committing.
-  - Use `dotnet test` for standalone C# projects or tooling.
+- Browser gameplay code:
+  - Run `npm run lint --prefix web` and `npm run test --prefix web` before committing.
+  - Use `npm run test:e2e --prefix web` when modifying Playwright flows.
 - If introducing build scripts or pipelines, document command usage in the relevant README and reference them in commit messages.
 
 ## Pull Request Guidelines
