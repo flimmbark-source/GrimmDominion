@@ -10,7 +10,6 @@ type HeroSprite = Phaser.GameObjects.Sprite & {
   stats: Stats;
   target?: Vec2;
   speed: number;
-  cart: Vec2;
 };
 
 type IsoConfig = {
@@ -24,8 +23,8 @@ type IsoConfig = {
 };
 
 export class World extends Phaser.Scene {
-  map!: Phaser.Tilemaps.Tilemap;
-  layer!: Phaser.Tilemaps.TilemapLayer;
+  private iso!: IsoConfig;
+  private ground!: Phaser.GameObjects.Layer;
   hero!: Phaser.GameObjects.Sprite & { stats: Stats; target?: Vec2; speed: number };
   marker!: Phaser.GameObjects.Rectangle;
   private noiseOff?: () => void;
@@ -42,22 +41,23 @@ export class World extends Phaser.Scene {
       tileHeight: 32,
       halfTileWidth: 32,
       halfTileHeight: 16,
-      gridWidth: 16,
-      gridHeight: 16,
-      origin: { x: 512, y: 96 }
+      gridWidth: 24,
+      gridHeight: 18,
+      origin: { x: 512, y: 120 }
     };
 
     this.ground = this.add.layer();
-    this.buildIsometricGround();
+    const groundBounds = this.buildIsometricGround();
 
-    this.hero = this.add.sprite(0, 0, 'hero-placeholder') as HeroSprite;
+    const heroStart = this.cartToScreen({
+      x: this.iso.gridWidth / 2,
+      y: this.iso.gridHeight / 2
+    });
+
+    this.hero = this.add.sprite(heroStart.x, heroStart.y, 'hero-placeholder') as HeroSprite;
     this.hero.setOrigin(0.5, 0.9);
     this.physics.add.existing(this.hero);
     this.hero.speed = 3.5;
-    this.hero.cart = {
-      x: this.iso.gridWidth / 2,
-      y: this.iso.gridHeight / 2
-    };
     this.hero.stats = {
       hp: 20,
       maxHp: 20,
@@ -67,9 +67,16 @@ export class World extends Phaser.Scene {
       stealth: 100,
       stealthMax: 100
     };
+    this.hero.setDepth(this.hero.y + 10);
 
     this.cameras.main.startFollow(this.hero, true, 0.15, 0.15);
     this.cameras.main.setZoom(1.5);
+    this.cameras.main.setBounds(
+      groundBounds.x,
+      groundBounds.y,
+      groundBounds.width,
+      groundBounds.height
+    );
 
     this.input.mouse?.disableContextMenu();
 
@@ -82,8 +89,14 @@ export class World extends Phaser.Scene {
         return;
       }
 
-      this.hero.target = { x: p.worldX, y: p.worldY };
-      this.marker.setPosition(p.worldX, p.worldY).setVisible(true);
+      const targetCart = this.screenToCart({ x: p.worldX, y: p.worldY });
+      if (!targetCart) {
+        return;
+      }
+
+      const target = this.cartToScreen(targetCart);
+      this.hero.target = target;
+      this.marker.setPosition(target.x, target.y).setDepth(target.y + 1).setVisible(true);
     });
 
     this.scene.launch('hud', { world: this });
@@ -120,18 +133,48 @@ export class World extends Phaser.Scene {
 
   update(_time: number, dt: number): void {
     const hero = this.hero;
-    this.darkLord.step(dt);
-    stepDLUnits(this.darkLord.units, this.hero, dt, (message) =>
-      (this.game as any).setAlert(message)
-    );
+
+    if (this.darkLord) {
+      this.darkLord.step(dt);
+      stepDLUnits(this.darkLord.units, this.hero, dt, (message) =>
+        (this.game as any).setAlert(message)
+      );
+    }
+
     if (!hero.target) {
       this.marker.setVisible(false);
       this._stepAccumulator = 0;
+      hero.setDepth(hero.y + 10);
       return;
     }
 
-    if (!this._stepAccumulator) {
+    const dx = hero.target.x - hero.x;
+    const dy = hero.target.y - hero.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance < 0.001) {
+      hero.setPosition(hero.target.x, hero.target.y);
+      hero.target = undefined;
       this._stepAccumulator = 0;
+      this.marker.setVisible(false);
+      hero.setDepth(hero.y + 10);
+      return;
+    }
+
+    const step = (hero.speed * dt) / 1000;
+    if (step >= distance) {
+      hero.setPosition(hero.target.x, hero.target.y);
+      hero.target = undefined;
+      this.marker.setVisible(false);
+      this._stepAccumulator = 0;
+    } else {
+      hero.setPosition(hero.x + (dx / distance) * step, hero.y + (dy / distance) * step);
+    }
+
+    hero.setDepth(hero.y + 10);
+
+    if (hero.target) {
+      this.marker.setPosition(hero.target.x, hero.target.y);
     }
 
     this._stepAccumulator += dt;
@@ -141,9 +184,60 @@ export class World extends Phaser.Scene {
     }
   }
 
-  private createDiamondShape(width: number, halfHeight: number): number[] {
-    const halfWidth = width / 2;
-    return [0, -halfHeight, halfWidth, 0, 0, halfHeight, -halfWidth, 0];
+  private buildIsometricGround(): Phaser.Geom.Rectangle {
+    const top = this.cartToScreen({ x: this.iso.gridWidth / 2, y: 0 });
+    const right = this.cartToScreen({ x: this.iso.gridWidth, y: this.iso.gridHeight / 2 });
+    const bottom = this.cartToScreen({ x: this.iso.gridWidth / 2, y: this.iso.gridHeight });
+    const left = this.cartToScreen({ x: 0, y: this.iso.gridHeight / 2 });
+
+    const groundShape = this.add.graphics();
+    groundShape.fillStyle(0x1f2a1f, 1);
+    groundShape.beginPath();
+    groundShape.moveTo(top.x, top.y);
+    groundShape.lineTo(right.x, right.y);
+    groundShape.lineTo(bottom.x, bottom.y);
+    groundShape.lineTo(left.x, left.y);
+    groundShape.closePath();
+    groundShape.fillPath();
+
+    groundShape.lineStyle(2, 0x203320, 1);
+    groundShape.beginPath();
+    groundShape.moveTo(top.x, top.y);
+    groundShape.lineTo(right.x, right.y);
+    groundShape.lineTo(bottom.x, bottom.y);
+    groundShape.lineTo(left.x, left.y);
+    groundShape.closePath();
+    groundShape.strokePath();
+    groundShape.setDepth(-200);
+
+    this.ground.add(groundShape);
+
+    const minX = Math.min(top.x, right.x, bottom.x, left.x);
+    const maxX = Math.max(top.x, right.x, bottom.x, left.x);
+    const minY = Math.min(top.y, right.y, bottom.y, left.y);
+    const maxY = Math.max(top.y, right.y, bottom.y, left.y);
+    return new Phaser.Geom.Rectangle(minX, minY, maxX - minX, maxY - minY);
+  }
+
+  private populateProps(): void {
+    const decorLayer = this.add.layer();
+    const props = [
+      { key: 'prop-stone-placeholder', count: 6, depthOffset: 5 },
+      { key: 'prop-shrub-placeholder', count: 4, depthOffset: 12 }
+    ];
+
+    props.forEach(({ key, count, depthOffset }) => {
+      for (let i = 0; i < count; i++) {
+        const cart = {
+          x: Phaser.Math.FloatBetween(1, this.iso.gridWidth - 1),
+          y: Phaser.Math.FloatBetween(1, this.iso.gridHeight - 1)
+        };
+        const screen = this.cartToScreen(cart);
+        decorLayer.add(
+          this.add.image(screen.x, screen.y, key).setOrigin(0.5, 1).setDepth(screen.y + depthOffset)
+        );
+      }
+    });
   }
 
   private cartToIso(cart: Vec2): Vec2 {
@@ -174,42 +268,19 @@ export class World extends Phaser.Scene {
       y: world.y - this.iso.origin.y
     };
     const cart = this.isoToCart(iso);
-    if (cart.x < 0 || cart.y < 0 || cart.x > this.iso.gridWidth || cart.y > this.iso.gridHeight) {
+
+    if (
+      cart.x < 0 ||
+      cart.y < 0 ||
+      cart.x > this.iso.gridWidth ||
+      cart.y > this.iso.gridHeight
+    ) {
       return undefined;
     }
+
     return {
       x: Phaser.Math.Clamp(cart.x, 0, this.iso.gridWidth - 0.0001),
       y: Phaser.Math.Clamp(cart.y, 0, this.iso.gridHeight - 0.0001)
     };
-  }
-
-  private updateHeroScreenPosition(): void {
-    const screen = this.cartToScreen(this.hero.cart);
-    this.hero.setPosition(screen.x, screen.y).setDepth(screen.y + 10);
-  }
-
-  private populateProps(): void {
-    const decorLayer = this.add.layer();
-    const props = [
-      { key: 'prop-stone-placeholder', count: 6, depthOffset: 5 },
-      { key: 'prop-shrub-placeholder', count: 4, depthOffset: 12 }
-    ];
-
-    props.forEach(({ key, count, depthOffset }) => {
-      for (let i = 0; i < count; i++) {
-        const cart = {
-          x: Phaser.Math.FloatBetween(1, this.iso.gridWidth - 1),
-          y: Phaser.Math.FloatBetween(1, this.iso.gridHeight - 1)
-        };
-        const screen = this.cartToScreen(cart);
-        decorLayer
-          .add(
-            this.add
-              .image(screen.x, screen.y, key)
-              .setOrigin(0.5, 1)
-              .setDepth(screen.y + depthOffset)
-          );
-      }
-    });
   }
 }
