@@ -1,178 +1,151 @@
 # Project Bootstrapping Plan
 
 ## Overview
-This guide translates the Grimm Dominion vertical slice requirements into a concrete Unity project
+This guide translates the Grimm Dominion vertical slice requirements into a concrete browser project
 setup checklist. Follow the steps sequentially when configuring the production repository so the
-team shares identical project settings, package baselines, and asset scaffolding.
+team shares identical tooling, package baselines, and asset scaffolding.
 
-## 1. Unity Project Creation
-1. Launch **Unity Hub 3.x** and install **Unity 2022.3 LTS** with the **Universal Render Pipeline**
-   feature set plus Android/iOS build support.
-2. Create a new project using the **URP (Universal Render Pipeline)** template.
-3. Name the project `GrimmDominion` and set the location to the repository root.
-4. Allow the editor to generate default URP content, then close Unity before making manual edits in
-   the file system.
+## 1. Workspace Creation
+1. From the repository root run `npm create vite@latest web -- --template vanilla-ts` to scaffold a
+   Vite+TypeScript workspace named `web/`.
+2. Accept the prompts to install dependencies, then run `npm install` so the root manifest pulls the
+   child workspace packages (Phaser, state management, testing utilities).
+3. Initialize a Git commit to capture the generated baseline before layering custom systems.
 
-## 2. Source Control Configuration
-1. Reopen the project in Unity.
-2. Navigate to **Edit ▸ Project Settings ▸ Editor** and set:
-   - **Version Control** mode to `Visible Meta Files`.
-   - **Asset Serialization** mode to `Force Text`.
-3. Save the project to ensure `.meta` files are written.
-4. From a terminal at the repository root, enable Git LFS for binary-heavy directories:
-   ```bash
-   git lfs install
-   git lfs track "Assets/Art/**"
-   git lfs track "Assets/Audio/**"
-   git lfs track "Assets/AddressableAssets/**"
-   git add .gitattributes
-   ```
-5. Commit the baseline settings change before importing packages to simplify diff review.
+## 2. Source Control & Tooling
+1. Enable `core.autocrlf=input` in Git to keep line endings consistent across operating systems.
+2. Add `.vscode/settings.json` with the shared TypeScript version and ESLint auto-fix-on-save for the
+   team.
+3. Configure Husky or a lightweight `lint-staged` hook to run `npm run lint -- --fix` on staged
+   TypeScript, CSS, and JSON files.
+4. Verify the repository `.npmrc` enables deterministic installs (`engine-strict=true`, `save-exact`).
 
-## 3. Package Manager Installation
-Use Unity's **Window ▸ Package Manager** (Unity Registry source) to install the following packages:
-- **Universal RP** (should already exist via template; verify version matches 2022.3 stream).
-- **Input System** – enable the *Use the new Input System* backend when prompted.
-- **Cinemachine**.
-- **Addressables** – create default groups.
-- **Photon Fusion SDK** – add scoped registry per Photon instructions if not bundled.
-- **Behavior Tree Tooling** – either import Behavior Designer (Asset Store) or add internal package
-  once available.
+## 3. Package Configuration
+Install the core runtime and development dependencies:
 
-> **Tip:** After each install, select **Project Settings ▸ Player** and confirm any required defines
-(e.g., `FUSION_WEAVER`). Document new scripting define symbols in `docs/prototype/technology.md`.
+- `npm install --save phaser@^3 @pixi/layers howler`
+- `npm install --save zustand immer date-fns` for gameplay/state utilities.
+- `npm install --save-dev eslint @typescript-eslint/eslint-plugin @typescript-eslint/parser prettier`
+- `npm install --save-dev vitest @vitest/coverage-c8 jsdom @testing-library/dom`
+- `npm install --save-dev playwright @playwright/test` (headless regression, optional for follow-up).
 
-## 4. Folder Structure
-Create the following top-level folders under `Assets/` (Unity automatically generates `.meta`
-files):
+Update `web/package.json` scripts:
+
+```json
+{
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" --max-warnings=0",
+    "format": "prettier --write \"src/**/*.{ts,tsx,scss,css,json}\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
+  }
+}
 ```
-Assets/
-  AddressableAssets/
-    Art/
-    Audio/
-    NetCode/
-    Prefabs/
-    Scenes/
-    ScriptableObjects/
-    UI/
-  Art/
-  Audio/
-  Editor/
-  NetCode/
-  Prefabs/
-  Scenes/
-  Scripts/
-    Boot/
-    Lobby/
-    Match/
-    Systems/
-      Economy/
-      FogOfWar/
-      Networking/
-      Quests/
-      Stealth/
-      Telemetry/
-      Units/
-  ScriptableObjects/
-    Abilities/
-    ChunkLayouts/
-    Quests/
-    Resources/
-    Units/
-  Tests/
-    EditMode/
-  UI/
-    Prefabs/
-      HUD/
-      Menus/
-  Audio/
-    Scripts/
+
+## 4. Directory Structure
+Mirror the following structure inside `web/` to keep gameplay, content, and tooling concerns
+isolated:
+
 ```
-> **Note:** Mirror any additional runtime folders inside `Assets/AddressableAssets/` if they contain
-content streamed at runtime (e.g., `Assets/AddressableAssets/Prefabs/Heroes`).
+web/
+  public/
+    audio/
+    fonts/
+    sprites/
+    shaders/
+  src/
+    assets/
+      atlases/
+      data/
+      maps/
+    content/
+      encounters/
+      quests/
+      roles/
+    core/
+      config/
+      telemetry/
+      utils/
+    game/
+      scenes/
+        boot/
+        lobby/
+        match/
+      systems/
+        economy/
+        fog/
+        quests/
+        stealth/
+        units/
+      ui/
+        hud/
+        overlays/
+    state/
+    styles/
+    index.html
+    main.ts
+  tests/
+    unit/
+    integration/
+  e2e/
+```
 
-## 5. Scene & Game Flow Assets
-1. Create scenes:
-   - `Assets/Scenes/Boot.unity`
-   - `Assets/Scenes/Lobby.unity`
-   - `Assets/Scenes/CastlePlateau_VSlice.unity`
-2. Author scene scripts:
-   - `Assets/Scripts/Boot/BootFlowController.cs`
-   - `Assets/Scripts/Lobby/LobbyUIController.cs`
-   - `Assets/Scripts/Match/MatchBootstrap.cs`
-3. Configure Addressables groups so each scene is addressable for async loading.
-4. Set **Boot.unity** as the first scene in **File ▸ Build Settings**.
+Document any deviations from this structure inside `docs/prototype/technology.md` so downstream
+contributors can align.
 
-## 6. Scriptable Object Definitions
-Create data definitions under `Assets/Scripts/Data/` with public fields aligning to gameplay
-documentation. Example structure:
-- `AbilityDefinition.cs`
-- `UnitDefinition.cs`
-- `QuestDefinition.cs`
-- `ResourceCurve.cs`
-- `ChunkLayoutDefinition.cs`
+## 5. Core Scene Scaffolding
+1. Implement `src/game/scenes/BootScene.ts` to preload shared atlases, audio, and JSON content before
+   transitioning to the lobby.
+2. Add `LobbyScene.ts` for role selection, hero onboarding tutorials, and session configuration.
+3. Create `MatchScene.ts` that composes biome tilemaps, unit factories, quest controllers, and HUD
+   overlays.
+4. Expose a `SceneRegistry` utility that lazily registers scenes so automated tests can load them in
+   isolation.
 
-Store initial instances under the matching `Assets/ScriptableObjects/` subfolders (e.g.,
-`Assets/ScriptableObjects/Abilities/DefaultStrike.asset`). Reference these assets from role and quest
-controllers to avoid hard-coded values.
+## 6. Systems & Services
+Author the foundational services under `src/game/systems/`:
 
-## 7. Prefab Assembly
-1. Build hero prefabs in `Assets/Prefabs/Heroes/` for **ExiledKnight** and **GoblinOutlaw** with
-   character controller, ability executor, animation placeholders, and Photon network object.
-2. Author Dark Lord commander rig under `Assets/Prefabs/DarkLord/CommanderRig.prefab` including
-   Cinemachine virtual cameras and UI anchors.
-3. Populate minion prefabs (skeleton, imp, bonecrusher) with NavMeshAgent, health component, and
-   behavior tree hooks.
-4. Place interactive props (gate, shrine, villager cages, gold caches, tavern, ritual node) in
-   `Assets/Prefabs/Props/` and label with Addressables for streaming.
-5. Produce biome chunk blockouts under `Assets/Prefabs/Biomes/` with spawn marker child transforms.
+- `economy/ResourceManager.ts` manages Evil Energy, Valor, and Gold ticks with event emitters for the
+  HUD.
+- `fog/FogController.ts` renders visibility masks via a full-screen fragment shader.
+- `quests/QuestManager.ts` loads quest JSON and orchestrates chained objectives.
+- `stealth/NoiseField.ts` tracks transient noise events and dispatches commander alerts.
+- `units/AbilityExecutor.ts` handles cooldown validation, targeting helpers, and animation triggers.
+- `telemetry/TelemetryClient.ts` (in `src/core/telemetry/`) batches match metrics to a webhook.
 
-## 8. Systems & Gameplay Scripts
-Author the following systems under `Assets/Scripts/Systems/` with namespaces matching their folders:
-- `FogOfWar/FogService.cs` & `FogOfWar/FogRenderer.cs`
-- `Stealth/NoiseEventSystem.cs`
-- `Economy/ResourceManager.cs`
-- `Quests/QuestManager.cs`
-- `Units/AbilityExecutor.cs`
-- `Networking/PhotonBootstrap.cs`
-- `Telemetry/TelemetryClient.cs`
+Provide Vitest unit coverage for deterministic systems such as resource tick cadence and stealth
+threshold calculations.
 
-For each system, add play mode tests in `Assets/Tests/EditMode/` validating critical behaviors
-(e.g., resource replication, quest completion events, telemetry batching).
+## 7. Content & Data
+1. Store quest, encounter, and role configuration JSON under `src/content/` with schema definitions in
+   `src/content/schemas/` (use `zod` for runtime validation if available).
+2. Define texture atlas manifests under `src/assets/atlases/` and wire them through Phaser's loader in
+   `BootScene`.
+3. Place ambient/dialogue audio clips under `public/audio/` and reference them with Howler wrappers.
 
-## 9. UI & UX Assets
-1. Create Addressable UI prefabs:
-   - `UI/Prefabs/HUD/HeroHUD.prefab`
-   - `UI/Prefabs/HUD/DarkLordHUD.prefab`
-   - `UI/Prefabs/Menus/PauseMenu.prefab`
-   - `UI/Prefabs/Menus/MatchSummary.prefab`
-2. Implement Input System action maps:
-   - `Assets/UI/Input/CommanderControls.inputactions`
-   - `Assets/UI/Input/HeroControls.inputactions`
-3. Add scripts:
-   - `UI/Scripts/HUD/HUDController.cs`
-   - `UI/Scripts/Tutorial/TutorialPromptManager.cs`
-4. Ensure HUD prefabs subscribe to `ResourceManager` and `QuestManager` events for updates.
+## 8. UI & HUD Layer
+1. Build HUD components in `src/game/ui/hud/` using Phaser's Scene Graph for in-canvas widgets and a
+   lightweight DOM overlay (e.g., Svelte or Lit) if richer forms are required.
+2. Centralize shared styling tokens in `src/styles/tokens.scss` and import them into HUD components.
+3. Expose accessible focus states for any DOM overlays to keep the experience keyboard friendly.
 
-## 10. Audio Implementation
-1. Author FMOD or Unity audio banks covering ambient, combat, and UI layers; store under
-   `Assets/Audio/Banks/`.
-2. Create AudioSource prefabs for noise cues and ability triggers, tagging them with Addressable
-   labels.
-3. Implement `Audio/Scripts/AdaptiveMusicController.cs` to switch music states based on quest phase.
+## 9. Build & Automation
+1. Add `.github/workflows/web-ci.yml` running `npm ci`, `npm run lint`, `npm run test`, and
+   `npm run build` on pull requests.
+2. Publish Vitest coverage reports as workflow artifacts.
+3. Configure Playwright smoke tests to run nightly against the deployed preview environment once it
+   exists.
 
-## 11. Build & Automation
-1. Configure `ProjectSettings/Graphics` to reference the URP asset created by the template.
-2. Tune `ProjectSettings/QualitySettings` for mobile defaults (texture quality, shadows).
-3. Implement `Assets/Editor/Build/BuildPipeline.cs` with CI entry points for Android and iOS.
-4. Add a GitHub Actions workflow under `.github/workflows/unity-ci.yml` referencing the Unity builder
-   action to run edit mode tests, build Addressables, and produce platform builds.
-
-## 12. Verification Checklist
+## 10. Verification Checklist
 Run the following before merging feature work:
-- ✅ Play mode test suite passes on the reference editor hardware.
-- ✅ Photon Fusion connects three local clients to the same room.
-- ✅ Match completes full quest arc and posts telemetry payload.
-- ✅ Android and iOS development builds deploy without missing asset exceptions.
+
+- ✅ `npm run lint` and `npm run test` succeed locally and in CI.
+- ✅ Vite development server loads the slice on port `5173` with hot reload functioning.
+- ✅ Match loop flows from lobby to victory/defeat with telemetry payload emitted.
+- ✅ Performance captures in Chrome DevTools show 60 FPS on the Codespaces reference VM.
 
 Document deviations or blockers in `docs/prototype/roadmap.md` to keep stakeholders informed.
