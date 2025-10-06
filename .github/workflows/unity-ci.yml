@@ -1,0 +1,35 @@
+name: Unity CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Cache Unity Library
+        uses: actions/cache@v3
+        with:
+          path: Library
+          key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+      - name: Install Unity Builder
+        uses: game-ci/unity-builder@v3
+        with:
+          targetPlatform: StandaloneWindows64
+          unityVersion: 2022.3.21f1
+          allowDirtyBuild: true
+      - name: Run PlayMode Tests
+        uses: game-ci/unity-test-runner@v3
+        with:
+          unityVersion: 2022.3.21f1
+          testMode: playmode
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: BuildArtifacts
+          path: BuildArtifacts
+          if-no-files-found: ignore
