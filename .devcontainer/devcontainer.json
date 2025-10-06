@@ -1,6 +1,6 @@
 {
   "name": "Grimm Dominion Unity Codespace",
-  "image": "ghcr.io/game-ci/unity3d:ubuntu-2022.3.21f1-base-3.0",
+  "image": "unityci/editor:ubuntu-2022.3.21f1-base-3.0",
   "features": {
     "ghcr.io/devcontainers/features/git-lfs:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {}

@@ -28,6 +28,10 @@
   asset pipeline for hashed production filenames.
 
 ## Codespaces Environment
+
+- Codespace container pulls from `unityci/editor:ubuntu-2022.3.21f1-base-3.0` so Unity dependencies
+  stay accessible without relying on deprecated GameCI image aliases. Update the tag alongside
+  Unity version bumps.
 - Launch the repository in GitHub Codespaces and run `npm install --prefix web` to pull down Phaser,
   TypeScript, Vite, and linting dependencies.
 - Start development with `npm run dev --prefix web -- --host 0.0.0.0 --port 5173` so the Vite server
