@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { EffectFrames, SpriteKeys } from '../assets/sprites';
 import type { Stats } from '../types';
 
 /** Tavern inventory item description. */
@@ -52,10 +53,15 @@ export function addTavern(
     .setScale(1.2)
     .setDepth(y + 10);
   const panel = scene.add
-    .rectangle(x, y - 60, 220, 90, 0x000000, 0.7)
-    .setStrokeStyle(1, 0x666666)
+    .sprite(x, y - 60, SpriteKeys.effects, EffectFrames.tavernPanel)
+    .setDisplaySize(240, 110)
     .setVisible(false)
     .setDepth(y + 20);
+  const panelFrame = scene.add
+    .rectangle(x, y - 60, 236, 106, 0xffffff, 0)
+    .setStrokeStyle(1, 0x666666)
+    .setVisible(false)
+    .setDepth(y + 21);
 
   const lines = STOCK.map((item, idx) =>
     scene.add
@@ -73,6 +79,7 @@ export function addTavern(
     .on('pointerdown', () => {
       const visible = !panel.visible;
       panel.setVisible(visible);
+      panelFrame.setVisible(visible);
       lines.forEach((line) => line.setVisible(visible));
     });
 

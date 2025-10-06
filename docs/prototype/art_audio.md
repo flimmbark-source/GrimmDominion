@@ -8,6 +8,7 @@
   - Goblin Outlaw: Patchwork leather, jingling coin bags, oversized goggles.
 - **Environments:** Modular biome kits with re-usable props (gnarled trees, crooked houses, rune stones). Shared texture atlas for performance.
 - **UI:** Storybook frames with parchment textures, bold iconography for readability on mobile.
+  - Updated shared `effects_items.png` sheet now includes bespoke HUD frame art (hero portrait, ability tray, inventory slots) to match the storybook treatment and replace flat debug boxes.
 
 ## Animation Priorities
 - Hero locomotion blends (idle, jog, sprint) with additive combat swings.

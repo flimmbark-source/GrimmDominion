@@ -28,5 +28,18 @@ export const SettlementFrames = {
 } as const;
 
 export const EffectFrames = {
-  chest: 9
+  chest: 9,
+  heroPortrait: 12,
+  heroPanel: 13,
+  hudPanel: 14,
+  abilityTray: 15,
+  abilitySlot: 16,
+  abilitySmokeBomb: 17,
+  abilityDagger: 18,
+  abilityShadowStep: 19,
+  abilityValorSurge: 20,
+  keyTag: 21,
+  inventorySlot: 22,
+  inventoryPlaceholder: 23,
+  tavernPanel: 24
 } as const;
