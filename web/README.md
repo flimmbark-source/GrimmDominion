@@ -1,8 +1,7 @@
 # Grimm Dominion Browser Prototype
 
-This folder contains the browser-based vertical slice for Grimm Dominion. It now renders an
-isometric RTS-style skirmish space so the hero squads can be commanded directly inside GitHub
-Codespaces or any modern browser.
+This folder contains the browser-based vertical slice for Grimm Dominion. It replaces the Unity
+prototype so the experience can run directly inside GitHub Codespaces or any modern browser.
 
 ## Getting Started
 1. Install dependencies:
@@ -20,6 +19,7 @@ Codespaces or any modern browser.
 - **Left Click:** Select a squad. Hold **Shift** to add/remove squads from the selection.
 - **Right Click:** Issue a move command to the highlighted tile. A warning ping appears if the tile
   is blocked.
+   that renders the overworld layout and quest deck from JSON content files.
 
 ## Scripts
 - `npm run dev --prefix web` – Start the development server with hot reload.
