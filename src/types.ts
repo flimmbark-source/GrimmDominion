@@ -16,4 +16,6 @@ export interface Stats {
   gold: number;
   stealth: number;
   stealthMax: number;
+  atk?: number;
+  speedMult?: number;
 }
