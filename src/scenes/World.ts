@@ -28,6 +28,8 @@ export class World extends Phaser.Scene {
   layer!: Phaser.Tilemaps.TilemapLayer;
   hero!: Phaser.GameObjects.Sprite & { stats: Stats; target?: Vec2; speed: number };
   marker!: Phaser.GameObjects.Rectangle;
+  private iso!: IsoConfig;
+  private ground!: Phaser.GameObjects.Layer;
   private noiseOff?: () => void;
   private _stepAccumulator = 0;
   private darkLord!: DarkLordAI;
@@ -68,6 +70,8 @@ export class World extends Phaser.Scene {
       stealthMax: 100
     };
 
+    this.updateHeroScreenPosition();
+
     this.cameras.main.startFollow(this.hero, true, 0.15, 0.15);
     this.cameras.main.setZoom(1.5);
 
@@ -82,8 +86,19 @@ export class World extends Phaser.Scene {
         return;
       }
 
-      this.hero.target = { x: p.worldX, y: p.worldY };
-      this.marker.setPosition(p.worldX, p.worldY).setVisible(true);
+      const cartTarget = this.screenToCart({ x: p.worldX, y: p.worldY });
+      if (!cartTarget) {
+        this.marker.setVisible(false);
+        this.hero.target = undefined;
+        return;
+      }
+
+      this.hero.target = cartTarget;
+      const markerScreen = this.cartToScreen(cartTarget);
+      this.marker
+        .setPosition(markerScreen.x, markerScreen.y)
+        .setDepth(markerScreen.y + 1)
+        .setVisible(true);
     });
 
     this.scene.launch('hud', { world: this });
@@ -120,24 +135,92 @@ export class World extends Phaser.Scene {
 
   update(_time: number, dt: number): void {
     const hero = this.hero;
-    this.darkLord.step(dt);
-    stepDLUnits(this.darkLord.units, this.hero, dt, (message) =>
-      (this.game as any).setAlert(message)
-    );
+
+    if (this.darkLord) {
+      this.darkLord.step(dt);
+      stepDLUnits(this.darkLord.units, this.hero, dt, (message) =>
+        (this.game as any).setAlert(message)
+      );
+    }
+
     if (!hero.target) {
       this.marker.setVisible(false);
       this._stepAccumulator = 0;
+      this.updateHeroScreenPosition();
       return;
     }
 
-    if (!this._stepAccumulator) {
+    const dx = hero.target.x - hero.cart.x;
+    const dy = hero.target.y - hero.cart.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance < 0.001) {
+      hero.cart = { ...hero.target };
+      hero.target = undefined;
       this._stepAccumulator = 0;
+      this.marker.setVisible(false);
+      this.updateHeroScreenPosition();
+      return;
+    }
+
+    const step = (hero.speed * dt) / 1000;
+    if (step >= distance) {
+      hero.cart = { ...hero.target };
+      hero.target = undefined;
+      this.marker.setVisible(false);
+      this._stepAccumulator = 0;
+    } else {
+      hero.cart = {
+        x: hero.cart.x + (dx / distance) * step,
+        y: hero.cart.y + (dy / distance) * step
+      };
+    }
+
+    this.updateHeroScreenPosition();
+
+    if (hero.target) {
+      const markerScreen = this.cartToScreen(hero.target);
+      this.marker.setPosition(markerScreen.x, markerScreen.y);
     }
 
     this._stepAccumulator += dt;
     if (this._stepAccumulator > 500) {
       emitFootsteps({ x: hero.x, y: hero.y });
       this._stepAccumulator = 0;
+    }
+  }
+
+  private buildIsometricGround(): void {
+    const textureKey = 'ground-tile';
+    if (!this.textures.exists(textureKey)) {
+      const halfWidth = this.iso.halfTileWidth;
+      const halfHeight = this.iso.halfTileHeight;
+      const tileWidth = this.iso.tileWidth;
+      const tileHeight = this.iso.tileHeight;
+      const points = [
+        new Phaser.Geom.Point(halfWidth, 0),
+        new Phaser.Geom.Point(tileWidth, halfHeight),
+        new Phaser.Geom.Point(halfWidth, tileHeight),
+        new Phaser.Geom.Point(0, halfHeight)
+      ];
+
+      const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+      graphics.fillStyle(0x1f2a1f, 1);
+      graphics.fillPoints(points, true);
+      graphics.lineStyle(2, 0x172017, 0.6);
+      graphics.strokePoints(points, true);
+      graphics.generateTexture(textureKey, tileWidth, tileHeight);
+      graphics.destroy();
+    }
+
+    for (let y = 0; y < this.iso.gridHeight; y++) {
+      for (let x = 0; x < this.iso.gridWidth; x++) {
+        const cart = { x, y };
+        const screen = this.cartToScreen(cart);
+        const tile = this.add.image(screen.x, screen.y, textureKey);
+        tile.setOrigin(0.5, 0.5).setDepth(screen.y);
+        this.ground.add(tile);
+      }
     }
   }
 
