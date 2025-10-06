@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { HUD } from '../ui/HUD';
 import type { Vec2, Stats } from '../types';
+import { DarkLordAI } from '../ai/darkLord';
+import { stepDLUnits } from '../ai/search';
 
 type HeroSprite = Phaser.GameObjects.Sprite & {
   stats: Stats;
@@ -24,6 +26,7 @@ export class World extends Phaser.Scene {
   layer!: Phaser.Tilemaps.TilemapLayer;
   hero!: Phaser.GameObjects.Sprite & { stats: Stats; target?: Vec2; speed: number };
   marker!: Phaser.GameObjects.Rectangle;
+  private darkLord!: DarkLordAI;
 
   constructor() {
     super('world');
@@ -82,10 +85,19 @@ export class World extends Phaser.Scene {
     this.scene.launch('hud', { world: this });
 
     this.populateProps();
+
+    const castle = this.add.image(480, 240, 'tiles').setFrame(7).setScale(1.3);
+    this.darkLord = new DarkLordAI(this, { x: castle.x, y: castle.y });
+    this.time.addEvent({ delay: 2000, loop: true, callback: () => this.darkLord.directorTick() });
+    this.darkLord.spawn('Scout');
   }
 
   update(_time: number, dt: number): void {
     const hero = this.hero;
+    this.darkLord.step(dt);
+    stepDLUnits(this.darkLord.units, this.hero, dt, (message) =>
+      (this.game as any).setAlert(message)
+    );
     if (!hero.target) {
       this.marker.setVisible(false);
       return;
