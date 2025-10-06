@@ -1,15 +1,15 @@
-import Phaser from "phaser";
+import { AUTO, Game, Scale, type Types } from "phaser";
 
 import { BootScene } from "./scenes/BootScene";
 import { MapScene } from "./scenes/MapScene";
 
-const config: Phaser.Types.Core.GameConfig = {
-  type: Phaser.AUTO,
+const config: Types.Core.GameConfig = {
+  type: AUTO,
   parent: "game",
   backgroundColor: "#120b22",
   scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    mode: Scale.FIT,
+    autoCenter: Scale.CENTER_BOTH,
     width: 1280,
     height: 720
   },
@@ -17,4 +17,4 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 // eslint-disable-next-line no-new
-new Phaser.Game(config);
+new Game(config);
