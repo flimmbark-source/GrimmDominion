@@ -3,6 +3,8 @@ import { HUD } from '../ui/HUD';
 import type { Vec2, Stats } from '../types';
 import { addChest } from '../world/chest';
 import { Noise, emitFootsteps } from '../systems/noise';
+import { DarkLordAI } from '../ai/darkLord';
+import { stepDLUnits } from '../ai/search';
 
 type HeroSprite = Phaser.GameObjects.Sprite & {
   stats: Stats;
@@ -28,6 +30,7 @@ export class World extends Phaser.Scene {
   marker!: Phaser.GameObjects.Rectangle;
   private noiseOff?: () => void;
   private _stepAccumulator = 0;
+  private darkLord!: DarkLordAI;
 
   constructor() {
     super('world');
@@ -87,6 +90,10 @@ export class World extends Phaser.Scene {
 
     this.populateProps();
 
+    const castle = this.add.image(480, 240, 'tiles').setFrame(7).setScale(1.3);
+    this.darkLord = new DarkLordAI(this, { x: castle.x, y: castle.y });
+    this.time.addEvent({ delay: 2000, loop: true, callback: () => this.darkLord.directorTick() });
+    this.darkLord.spawn('Scout');
     const { spawnVillage, spawnFauna } = await import('../world/spawners');
     spawnVillage(this, 320, 160);
     spawnFauna(this, 6);
@@ -113,6 +120,10 @@ export class World extends Phaser.Scene {
 
   update(_time: number, dt: number): void {
     const hero = this.hero;
+    this.darkLord.step(dt);
+    stepDLUnits(this.darkLord.units, this.hero, dt, (message) =>
+      (this.game as any).setAlert(message)
+    );
     if (!hero.target) {
       this.marker.setVisible(false);
       this._stepAccumulator = 0;
