@@ -10,26 +10,11 @@ type HeroSprite = Phaser.GameObjects.Sprite & {
   stats: Stats;
   target?: Vec2;
   speed: number;
-  cart: Vec2;
-};
-
-type IsoConfig = {
-  tileWidth: number;
-  tileHeight: number;
-  halfTileWidth: number;
-  halfTileHeight: number;
-  gridWidth: number;
-  gridHeight: number;
-  origin: Vec2;
 };
 
 export class World extends Phaser.Scene {
-  map!: Phaser.Tilemaps.Tilemap;
-  layer!: Phaser.Tilemaps.TilemapLayer;
   hero!: Phaser.GameObjects.Sprite & { stats: Stats; target?: Vec2; speed: number };
   marker!: Phaser.GameObjects.Rectangle;
-  private iso!: IsoConfig;
-  private ground!: Phaser.GameObjects.Layer;
   private noiseOff?: () => void;
   private _stepAccumulator = 0;
   private darkLord!: DarkLordAI;
@@ -39,27 +24,19 @@ export class World extends Phaser.Scene {
   }
 
   async create(): Promise<void> {
-    this.iso = {
-      tileWidth: 64,
-      tileHeight: 32,
-      halfTileWidth: 32,
-      halfTileHeight: 16,
-      gridWidth: 16,
-      gridHeight: 16,
-      origin: { x: 512, y: 96 }
-    };
+    const groundWidth = 2000;
+    const groundHeight = 1200;
+    this.add
+      .rectangle(groundWidth / 2, groundHeight / 2, groundWidth, groundHeight, 0x1f2a1f)
+      .setOrigin(0.5)
+      .setDepth(-100);
 
-    this.ground = this.add.layer();
-    this.buildIsometricGround();
+    this.cameras.main.setBounds(0, 0, groundWidth, groundHeight);
 
-    this.hero = this.add.sprite(0, 0, 'hero-placeholder') as HeroSprite;
+    this.hero = this.add.sprite(groundWidth / 2, groundHeight / 2, 'hero-placeholder') as HeroSprite;
     this.hero.setOrigin(0.5, 0.9);
     this.physics.add.existing(this.hero);
     this.hero.speed = 3.5;
-    this.hero.cart = {
-      x: this.iso.gridWidth / 2,
-      y: this.iso.gridHeight / 2
-    };
     this.hero.stats = {
       hp: 20,
       maxHp: 20,
@@ -69,8 +46,7 @@ export class World extends Phaser.Scene {
       stealth: 100,
       stealthMax: 100
     };
-
-    this.updateHeroScreenPosition();
+    this.hero.setDepth(this.hero.y + 10);
 
     this.cameras.main.startFollow(this.hero, true, 0.15, 0.15);
     this.cameras.main.setZoom(1.5);
@@ -86,18 +62,10 @@ export class World extends Phaser.Scene {
         return;
       }
 
-      const cartTarget = this.screenToCart({ x: p.worldX, y: p.worldY });
-      if (!cartTarget) {
-        this.marker.setVisible(false);
-        this.hero.target = undefined;
-        return;
-      }
-
-      this.hero.target = cartTarget;
-      const markerScreen = this.cartToScreen(cartTarget);
+      this.hero.target = { x: p.worldX, y: p.worldY };
       this.marker
-        .setPosition(markerScreen.x, markerScreen.y)
-        .setDepth(markerScreen.y + 1)
+        .setPosition(p.worldX, p.worldY)
+        .setDepth(p.worldY + 1)
         .setVisible(true);
     });
 
@@ -146,41 +114,37 @@ export class World extends Phaser.Scene {
     if (!hero.target) {
       this.marker.setVisible(false);
       this._stepAccumulator = 0;
-      this.updateHeroScreenPosition();
+      hero.setDepth(hero.y + 10);
       return;
     }
 
-    const dx = hero.target.x - hero.cart.x;
-    const dy = hero.target.y - hero.cart.y;
+    const dx = hero.target.x - hero.x;
+    const dy = hero.target.y - hero.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
     if (distance < 0.001) {
-      hero.cart = { ...hero.target };
+      hero.setPosition(hero.target.x, hero.target.y);
       hero.target = undefined;
       this._stepAccumulator = 0;
       this.marker.setVisible(false);
-      this.updateHeroScreenPosition();
+      hero.setDepth(hero.y + 10);
       return;
     }
 
     const step = (hero.speed * dt) / 1000;
     if (step >= distance) {
-      hero.cart = { ...hero.target };
+      hero.setPosition(hero.target.x, hero.target.y);
       hero.target = undefined;
       this.marker.setVisible(false);
       this._stepAccumulator = 0;
     } else {
-      hero.cart = {
-        x: hero.cart.x + (dx / distance) * step,
-        y: hero.cart.y + (dy / distance) * step
-      };
+      hero.setPosition(hero.x + (dx / distance) * step, hero.y + (dy / distance) * step);
     }
 
-    this.updateHeroScreenPosition();
+    hero.setDepth(hero.y + 10);
 
     if (hero.target) {
-      const markerScreen = this.cartToScreen(hero.target);
-      this.marker.setPosition(markerScreen.x, markerScreen.y);
+      this.marker.setPosition(hero.target.x, hero.target.y);
     }
 
     this._stepAccumulator += dt;
@@ -188,87 +152,6 @@ export class World extends Phaser.Scene {
       emitFootsteps({ x: hero.x, y: hero.y });
       this._stepAccumulator = 0;
     }
-  }
-
-  private buildIsometricGround(): void {
-    const textureKey = 'ground-tile';
-    if (!this.textures.exists(textureKey)) {
-      const halfWidth = this.iso.halfTileWidth;
-      const halfHeight = this.iso.halfTileHeight;
-      const tileWidth = this.iso.tileWidth;
-      const tileHeight = this.iso.tileHeight;
-      const points = [
-        new Phaser.Geom.Point(halfWidth, 0),
-        new Phaser.Geom.Point(tileWidth, halfHeight),
-        new Phaser.Geom.Point(halfWidth, tileHeight),
-        new Phaser.Geom.Point(0, halfHeight)
-      ];
-
-      const graphics = this.make.graphics({ x: 0, y: 0, add: false });
-      graphics.fillStyle(0x1f2a1f, 1);
-      graphics.fillPoints(points, true);
-      graphics.lineStyle(2, 0x172017, 0.6);
-      graphics.strokePoints(points, true);
-      graphics.generateTexture(textureKey, tileWidth, tileHeight);
-      graphics.destroy();
-    }
-
-    for (let y = 0; y < this.iso.gridHeight; y++) {
-      for (let x = 0; x < this.iso.gridWidth; x++) {
-        const cart = { x, y };
-        const screen = this.cartToScreen(cart);
-        const tile = this.add.image(screen.x, screen.y, textureKey);
-        tile.setOrigin(0.5, 0.5).setDepth(screen.y);
-        this.ground.add(tile);
-      }
-    }
-  }
-
-  private createDiamondShape(width: number, halfHeight: number): number[] {
-    const halfWidth = width / 2;
-    return [0, -halfHeight, halfWidth, 0, 0, halfHeight, -halfWidth, 0];
-  }
-
-  private cartToIso(cart: Vec2): Vec2 {
-    return {
-      x: (cart.x - cart.y) * this.iso.halfTileWidth,
-      y: (cart.x + cart.y) * this.iso.halfTileHeight
-    };
-  }
-
-  private cartToScreen(cart: Vec2): Vec2 {
-    const iso = this.cartToIso(cart);
-    return {
-      x: iso.x + this.iso.origin.x,
-      y: iso.y + this.iso.origin.y
-    };
-  }
-
-  private isoToCart(iso: Vec2): Vec2 {
-    return {
-      x: (iso.y / this.iso.halfTileHeight + iso.x / this.iso.halfTileWidth) / 2,
-      y: (iso.y / this.iso.halfTileHeight - iso.x / this.iso.halfTileWidth) / 2
-    };
-  }
-
-  private screenToCart(world: Vec2): Vec2 | undefined {
-    const iso = {
-      x: world.x - this.iso.origin.x,
-      y: world.y - this.iso.origin.y
-    };
-    const cart = this.isoToCart(iso);
-    if (cart.x < 0 || cart.y < 0 || cart.x > this.iso.gridWidth || cart.y > this.iso.gridHeight) {
-      return undefined;
-    }
-    return {
-      x: Phaser.Math.Clamp(cart.x, 0, this.iso.gridWidth - 0.0001),
-      y: Phaser.Math.Clamp(cart.y, 0, this.iso.gridHeight - 0.0001)
-    };
-  }
-
-  private updateHeroScreenPosition(): void {
-    const screen = this.cartToScreen(this.hero.cart);
-    this.hero.setPosition(screen.x, screen.y).setDepth(screen.y + 10);
   }
 
   private populateProps(): void {
@@ -280,18 +163,11 @@ export class World extends Phaser.Scene {
 
     props.forEach(({ key, count, depthOffset }) => {
       for (let i = 0; i < count; i++) {
-        const cart = {
-          x: Phaser.Math.FloatBetween(1, this.iso.gridWidth - 1),
-          y: Phaser.Math.FloatBetween(1, this.iso.gridHeight - 1)
-        };
-        const screen = this.cartToScreen(cart);
-        decorLayer
-          .add(
-            this.add
-              .image(screen.x, screen.y, key)
-              .setOrigin(0.5, 1)
-              .setDepth(screen.y + depthOffset)
-          );
+        const x = Phaser.Math.Between(200, 1800);
+        const y = Phaser.Math.Between(200, 1000);
+        decorLayer.add(
+          this.add.image(x, y, key).setOrigin(0.5, 1).setDepth(y + depthOffset)
+        );
       }
     });
   }
