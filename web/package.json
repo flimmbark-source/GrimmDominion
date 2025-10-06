@@ -1,0 +1,8 @@
+{
+  "name": "grimm-dominion-web",
+  "private": true,
+  "scripts": {
+    "lint": "echo 'No lint configuration defined for the web workspace.'",
+    "test": "echo 'No test suite defined for the web workspace.'"
+  }
+}

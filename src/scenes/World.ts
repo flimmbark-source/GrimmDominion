@@ -43,7 +43,7 @@ export class World extends Phaser.Scene {
     this.ground = this.add.layer();
     this.buildIsometricGround();
 
-    this.hero = this.add.sprite(0, 0, 'tiles', 1) as HeroSprite;
+    this.hero = this.add.sprite(0, 0, 'hero-placeholder') as HeroSprite;
     this.hero.setOrigin(0.5, 0.9);
     this.physics.add.existing(this.hero);
     this.hero.speed = 3.5;
@@ -188,11 +188,11 @@ export class World extends Phaser.Scene {
   private populateProps(): void {
     const decorLayer = this.add.layer();
     const props = [
-      { frame: 2, count: 8, scale: 1, alpha: 0.9 },
-      { frame: 3, count: 3, scale: 1.4, alpha: 1 }
+      { key: 'prop-stone-placeholder', count: 6, depthOffset: 5 },
+      { key: 'prop-shrub-placeholder', count: 4, depthOffset: 12 }
     ];
 
-    props.forEach(({ frame, count, scale, alpha }) => {
+    props.forEach(({ key, count, depthOffset }) => {
       for (let i = 0; i < count; i++) {
         const cart = {
           x: Phaser.Math.FloatBetween(1, this.iso.gridWidth - 1),
@@ -202,12 +202,9 @@ export class World extends Phaser.Scene {
         decorLayer
           .add(
             this.add
-              .image(screen.x, screen.y, 'tiles')
-              .setFrame(frame)
+              .image(screen.x, screen.y, key)
               .setOrigin(0.5, 1)
-              .setScale(scale)
-              .setAlpha(alpha)
-              .setDepth(screen.y + 5)
+              .setDepth(screen.y + depthOffset)
           );
       }
     });
