@@ -1,4 +1,5 @@
-import Phaser from "phaser";
+import { Display, Geom, Math as PhaserMath, Scene } from "phaser";
+import type { GameObjects, Input, Tweens } from "phaser";
 
 import { isoTileCenter, isoToScreen, screenToIso, TileSize } from "../iso/coordinates";
 
@@ -71,11 +72,11 @@ interface HeroRuntime {
   id: string;
   label: string;
   color: number;
-  isoPosition: Phaser.Math.Vector2;
-  targetIso: Phaser.Math.Vector2 | null;
+  isoPosition: PhaserMath.Vector2;
+  targetIso: PhaserMath.Vector2 | null;
   speed: number;
-  container: Phaser.GameObjects.Container;
-  selectionRing: Phaser.GameObjects.Arc;
+  container: GameObjects.Container;
+  selectionRing: GameObjects.Arc;
 }
 
 const TILE_PALETTE: Record<TileType, TilePaletteEntry> = {
@@ -101,7 +102,7 @@ const FEATURE_COLORS: Record<string, number> = {
 
 export const MapSceneKey = "map";
 
-export class MapScene extends Phaser.Scene {
+export class MapScene extends Scene {
   private quests: QuestDefinition[] = [];
 
   private worldConfig: WorldConfig | null = null;
@@ -110,7 +111,7 @@ export class MapScene extends Phaser.Scene {
 
   private tileSize!: TileSize;
 
-  private mapOrigin!: Phaser.Math.Vector2;
+  private mapOrigin!: PhaserMath.Vector2;
 
   private diamondPoints: number[] = [];
 
@@ -120,11 +121,11 @@ export class MapScene extends Phaser.Scene {
 
   private selectedHeroes = new Set<HeroRuntime>();
 
-  private tileHighlight!: Phaser.GameObjects.Polygon;
+  private tileHighlight!: GameObjects.Polygon;
 
-  private commandMarker!: Phaser.GameObjects.Polygon;
+  private commandMarker!: GameObjects.Polygon;
 
-  private commandTween?: Phaser.Tweens.Tween;
+  private commandTween?: Tweens.Tween;
 
   constructor() {
     super(MapSceneKey);
@@ -140,7 +141,7 @@ export class MapScene extends Phaser.Scene {
     }
 
     this.tileSize = this.mapConfig.tileSize;
-    this.mapOrigin = new Phaser.Math.Vector2(this.scale.width / 2, 160);
+    this.mapOrigin = new PhaserMath.Vector2(this.scale.width / 2, 160);
     this.diamondPoints = [
       0,
       -this.tileSize.height / 2,
@@ -242,11 +243,11 @@ export class MapScene extends Phaser.Scene {
 
   private createHeroUnits(): void {
     this.heroUnits = this.mapConfig.heroSquads.map((definition) => {
-      const isoPosition = new Phaser.Math.Vector2(
+      const isoPosition = new PhaserMath.Vector2(
         definition.tile.x + 0.5,
         definition.tile.y + 0.5
       );
-      const heroColor = Phaser.Display.Color.HexStringToColor(definition.color).color;
+      const heroColor = Display.Color.HexStringToColor(definition.color).color;
 
       const container = this.add.container(0, 0);
       const body = this.add.circle(0, 0, 18, heroColor, 1);
@@ -268,8 +269,8 @@ export class MapScene extends Phaser.Scene {
       container.setDepth(0);
       container.setData("heroId", definition.id);
       container.setInteractive({
-        hitArea: new Phaser.Geom.Circle(0, 0, 26),
-        hitAreaCallback: Phaser.Geom.Circle.Contains,
+        hitArea: new Geom.Circle(0, 0, 26),
+        hitAreaCallback: Geom.Circle.Contains,
         useHandCursor: true
       });
 
@@ -393,7 +394,7 @@ export class MapScene extends Phaser.Scene {
   }
 
   private registerInputHandlers(): void {
-    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+    this.input.on("pointerdown", (pointer: Input.Pointer) => {
       if (pointer.button !== 0) {
         return;
       }
@@ -421,7 +422,7 @@ export class MapScene extends Phaser.Scene {
       }
     });
 
-    this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+    this.input.on("pointermove", (pointer: Input.Pointer) => {
       const picked = this.pickTileFromPointer(pointer);
       if (!picked) {
         this.tileHighlight.setVisible(false);
@@ -443,7 +444,7 @@ export class MapScene extends Phaser.Scene {
       }
     });
 
-    this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
+    this.input.on("pointerup", (pointer: Input.Pointer) => {
       if (pointer.button !== 2) {
         return;
       }
@@ -465,7 +466,7 @@ export class MapScene extends Phaser.Scene {
     });
   }
 
-  private findHeroUnderPointer(pointer: Phaser.Input.Pointer): HeroRuntime | null {
+  private findHeroUnderPointer(pointer: Input.Pointer): HeroRuntime | null {
     return (
       this.heroUnits.find((hero) => {
         const dx = pointer.worldX - hero.container.x;
@@ -485,7 +486,7 @@ export class MapScene extends Phaser.Scene {
     const tileCenter = isoTileCenter(tileX, tileY);
     selected.forEach((hero, index) => {
       const offset = formationOffsets[index];
-      hero.targetIso = new Phaser.Math.Vector2(
+      hero.targetIso = new PhaserMath.Vector2(
         tileCenter.x + offset.x,
         tileCenter.y + offset.y
       );
@@ -494,17 +495,17 @@ export class MapScene extends Phaser.Scene {
     this.showCommandMarker(tileCenter);
   }
 
-  private computeFormationOffsets(count: number): Phaser.Math.Vector2[] {
+  private computeFormationOffsets(count: number): PhaserMath.Vector2[] {
     if (count === 1) {
-      return [new Phaser.Math.Vector2(0, 0)];
+      return [new PhaserMath.Vector2(0, 0)];
     }
 
-    const offsets: Phaser.Math.Vector2[] = [];
+    const offsets: PhaserMath.Vector2[] = [];
     const radius = 0.35 + count * 0.04;
     for (let index = 0; index < count; index += 1) {
       const angle = (index / count) * Math.PI * 2;
       offsets.push(
-        new Phaser.Math.Vector2(
+        new PhaserMath.Vector2(
           Math.cos(angle) * radius,
           Math.sin(angle) * radius * 0.6
         )
@@ -579,16 +580,16 @@ export class MapScene extends Phaser.Scene {
     hero.container.setDepth(screenPoint.y + 20);
   }
 
-  private projectIso(point: { x: number; y: number }): Phaser.Math.Vector2 {
+  private projectIso(point: { x: number; y: number }): PhaserMath.Vector2 {
     const projected = isoToScreen(point, this.tileSize);
-    return new Phaser.Math.Vector2(
+    return new PhaserMath.Vector2(
       this.mapOrigin.x + projected.x,
       this.mapOrigin.y + projected.y
     );
   }
 
-  private pickTileFromPointer(pointer: Phaser.Input.Pointer):
-    | { tileX: number; tileY: number; iso: Phaser.Math.Vector2 }
+  private pickTileFromPointer(pointer: Input.Pointer):
+    | { tileX: number; tileY: number; iso: PhaserMath.Vector2 }
     | null {
     const iso = screenToIso(
       {
@@ -607,7 +608,7 @@ export class MapScene extends Phaser.Scene {
     return {
       tileX,
       tileY,
-      iso: new Phaser.Math.Vector2(iso.x, iso.y)
+      iso: new PhaserMath.Vector2(iso.x, iso.y)
     };
   }
 

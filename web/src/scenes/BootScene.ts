@@ -1,10 +1,10 @@
-import Phaser from "phaser";
+import { Scene } from "phaser";
 
 import { MapSceneKey } from "./MapScene";
 
 export const BootSceneKey = "boot";
 
-export class BootScene extends Phaser.Scene {
+export class BootScene extends Scene {
   constructor() {
     super(BootSceneKey);
   }
