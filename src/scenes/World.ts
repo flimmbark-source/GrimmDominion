@@ -20,10 +20,10 @@ type IsoConfig = {
 };
 
 export class World extends Phaser.Scene {
-  hero!: HeroSprite;
-  marker!: Phaser.GameObjects.Polygon;
-  ground!: Phaser.GameObjects.Layer;
-  iso!: IsoConfig;
+  map!: Phaser.Tilemaps.Tilemap;
+  layer!: Phaser.Tilemaps.TilemapLayer;
+  hero!: Phaser.GameObjects.Sprite & { stats: Stats; target?: Vec2; speed: number };
+  marker!: Phaser.GameObjects.Rectangle;
 
   constructor() {
     super('world');
@@ -61,21 +61,12 @@ export class World extends Phaser.Scene {
       stealthMax: 100
     };
 
-    this.updateHeroScreenPosition();
-
-    const worldWidth = (this.iso.gridWidth + this.iso.gridHeight) * this.iso.halfTileWidth;
-    const worldHeight = (this.iso.gridWidth + this.iso.gridHeight) * this.iso.halfTileHeight;
-
-    this.cameras.main.setBounds(0, 0, worldWidth + this.iso.origin.x, worldHeight + this.iso.origin.y + 200);
     this.cameras.main.startFollow(this.hero, true, 0.15, 0.15);
-    this.cameras.main.setZoom(1.3);
+    this.cameras.main.setZoom(1.5);
 
     this.input.mouse?.disableContextMenu();
 
-    this.marker = this.add
-      .polygon(0, 0, this.createDiamondShape(12, 6), 0xffffff, 0.5)
-      .setStrokeStyle(1, 0x9bd4ff)
-      .setVisible(false);
+    this.marker = this.add.rectangle(0, 0, 8, 8, 0xffffff).setVisible(false);
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (p.rightButtonDown()) {
@@ -84,17 +75,8 @@ export class World extends Phaser.Scene {
         return;
       }
 
-      const cart = this.screenToCart({ x: p.worldX, y: p.worldY });
-      if (!cart) {
-        return;
-      }
-
-      this.hero.target = cart;
-      const markerPos = this.cartToScreen(cart);
-      this.marker
-        .setPosition(markerPos.x, markerPos.y)
-        .setDepth(markerPos.y + 1)
-        .setVisible(true);
+      this.hero.target = { x: p.worldX, y: p.worldY };
+      this.marker.setPosition(p.worldX, p.worldY).setVisible(true);
     });
 
     this.scene.launch('hud', { world: this });
@@ -104,37 +86,9 @@ export class World extends Phaser.Scene {
 
   update(_time: number, dt: number): void {
     const hero = this.hero;
-
-    if (hero.target) {
-      const dx = hero.target.x - hero.cart.x;
-      const dy = hero.target.y - hero.cart.y;
-      const dist = Math.hypot(dx, dy);
-      if (dist < 0.02) {
-        hero.cart = { ...hero.target };
-        hero.target = undefined;
-        this.marker.setVisible(false);
-      } else {
-        const step = hero.speed * (dt / 1000);
-        const move = Math.min(step, dist);
-        hero.cart.x += (dx / dist) * move;
-        hero.cart.y += (dy / dist) * move;
-      }
-    }
-
-    this.updateHeroScreenPosition();
-  }
-
-  private buildIsometricGround(): void {
-    const { gridWidth, gridHeight, tileWidth, tileHeight } = this.iso;
-    for (let y = 0; y < gridHeight; y++) {
-      for (let x = 0; x < gridWidth; x++) {
-        const tileCenter = this.cartToScreen({ x: x + 0.5, y: y + 0.5 });
-        const tile = this.add
-          .polygon(tileCenter.x, tileCenter.y, this.createDiamondShape(tileWidth, tileHeight / 2), 0x27422d, 0.95)
-          .setStrokeStyle(1, 0x1b2b1f, 0.4)
-          .setDepth(tileCenter.y);
-        this.ground.add(tile);
-      }
+    if (!hero.target) {
+      this.marker.setVisible(false);
+      return;
     }
   }
 
