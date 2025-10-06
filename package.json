@@ -1,15 +1,16 @@
 {
-  "name": "grimm-dominion",
+  "name": "grimm-dominion-proto",
   "private": true,
-  "description": "Monorepo manifest for the Grimm Dominion project.",
-  "license": "UNLICENSED",
   "scripts": {
-    "postinstall": "npm install --prefix web",
-    "install:web": "npm install --prefix web",
-    "dev": "npm run dev --prefix web -- --host 0.0.0.0 --port 5173",
-    "build": "npm run build --prefix web",
-    "preview": "npm run preview --prefix web",
-    "lint": "npm run lint --prefix web",
-    "test": "npm run test --prefix web"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "phaser": "^3.80.0"
   }
 }
