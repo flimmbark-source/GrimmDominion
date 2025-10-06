@@ -34,7 +34,6 @@ export class HUD extends Phaser.Scene {
     add.text(width - 160, height - 58, 'Stealth', { fontSize: '12px' });
     this.stealthBar = add.rectangle(width - 90, height - 58, 120, 10, 0x2ecc71).setOrigin(0, 0.5);
 
-    this.cameras.main.setBackgroundColor(0x000000);
     this.cameras.main.setScroll(0, 0);
   }
 

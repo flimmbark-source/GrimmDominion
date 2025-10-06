@@ -14,9 +14,13 @@ export class World extends Phaser.Scene {
   create(): void {
     this.map = this.make.tilemap({ key: 'map' });
     const tiles = this.map.addTilesetImage('tiles', 'tiles', 32, 32, 0, 0);
-    this.layer = this.map.createLayer('ground', tiles!, 0, 0)!;
+    if (!tiles) {
+      console.error('Tileset "tiles" failed to load.');
+      return;
+    }
+    this.layer = this.map.createLayer('ground', tiles, 0, 0)!;
 
-    this.hero = this.add.sprite(160, 160, 'tiles').setFrame(1) as any;
+    this.hero = this.add.sprite(160, 160, 'tiles', 1) as any;
     this.physics.add.existing(this.hero);
     this.hero.speed = 100;
     this.hero.stats = {

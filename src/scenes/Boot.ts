@@ -6,7 +6,10 @@ export class Boot extends Phaser.Scene {
   }
 
   preload(): void {
-    this.load.image('tiles', '/tiles.png');
+    this.load.spritesheet('tiles', '/tiles.png', {
+      frameWidth: 32,
+      frameHeight: 32
+    });
     this.load.tilemapTiledJSON('map', '/tilemap.json');
   }
 
