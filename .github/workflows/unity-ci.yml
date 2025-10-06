@@ -28,7 +28,7 @@ jobs:
           unityVersion: 2022.3.21f1
           testMode: playmode
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: BuildArtifacts
           path: BuildArtifacts
