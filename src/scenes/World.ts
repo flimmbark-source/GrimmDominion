@@ -34,6 +34,17 @@ export class World extends Phaser.Scene {
     });
 
     this.scene.launch('hud', { world: this });
+
+    // demo flora/structures
+    for (let i = 0; i < 12; i++) {
+      const fx = 64 + Math.random() * 384;
+      const fy = 64 + Math.random() * 384;
+      this.add.image(fx, fy, 'tiles').setFrame(2).setAlpha(0.9); // bush
+    }
+    // placeholder structure (village hut)
+    this.add.image(320, 160, 'tiles').setFrame(3).setScale(1.2);
+    // light fx
+    this.add.rectangle(320, 160, 40, 40, 0xffff00, 0.1).setBlendMode(Phaser.BlendModes.ADD);
   }
 
   update(_time: number, dt: number): void {
