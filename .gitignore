@@ -34,3 +34,5 @@ sysinfo.txt
 .vs/
 .idea/
 *.orig
+node_modules/
+dist/
