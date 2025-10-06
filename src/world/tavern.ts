@@ -57,12 +57,6 @@ export function addTavern(
     .setDisplaySize(240, 110)
     .setVisible(false)
     .setDepth(y + 20);
-  const panelFrame = scene.add
-    .rectangle(x, y - 60, 236, 106, 0xffffff, 0)
-    .setStrokeStyle(1, 0x666666)
-    .setVisible(false)
-    .setDepth(y + 21);
-
   const lines = STOCK.map((item, idx) =>
     scene.add
       .text(x - 100, y - 80 + idx * 18, `${item.name} — ${item.cost}g`, {
@@ -79,7 +73,6 @@ export function addTavern(
     .on('pointerdown', () => {
       const visible = !panel.visible;
       panel.setVisible(visible);
-      panelFrame.setVisible(visible);
       lines.forEach((line) => line.setVisible(visible));
     });
 

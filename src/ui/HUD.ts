@@ -70,9 +70,6 @@ export class HUD extends Phaser.Scene {
       .setDisplaySize(width, panelHeight)
       .setAlpha(0.92);
     panelBg.setName('hud-panel');
-    addRect(width / 2, panelCenterY, width, panelHeight, 0xffffff, 0)
-      .setStrokeStyle(2, 0x1c2738)
-      .setAlpha(0.95);
 
     const abilityKeys = ['Q', 'W', 'E', 'R'];
     let abilitySlotSize = Phaser.Math.Clamp(width / 9, 64, 140);
@@ -115,9 +112,6 @@ export class HUD extends Phaser.Scene {
     const heroPanelY = height - 92;
     addSprite(heroPanelX, heroPanelY, SpriteKeys.effects, EffectFrames.heroPanel)
       .setDisplaySize(150, 140)
-      .setAlpha(0.95);
-    addRect(heroPanelX, heroPanelY, 150, 140, 0xffffff, 0)
-      .setStrokeStyle(2, 0x2c425b)
       .setAlpha(0.95);
 
     const portrait = addSprite(heroPanelX, heroPanelY - 6, SpriteKeys.effects, EffectFrames.heroPortrait)
@@ -196,16 +190,6 @@ export class HUD extends Phaser.Scene {
     )
       .setDisplaySize(trayWidth, abilityTrayHeight)
       .setAlpha(0.92);
-    addRect(
-      abilityLeftEdge + totalAbilityWidth / 2,
-      abilityY,
-      trayWidth,
-      abilityTrayHeight,
-      0xffffff,
-      0
-    )
-      .setStrokeStyle(2, 0x284257)
-      .setAlpha(0.95);
     const keyTagStyle = { fontSize: '12px', color: '#f9fbff' } as Phaser.Types.GameObjects.Text.TextStyle;
     const abilityIconFrames = [
       EffectFrames.abilitySmokeBomb,
@@ -217,9 +201,6 @@ export class HUD extends Phaser.Scene {
       const x = abilityStartX + index * (abilitySlotSize + abilityGap);
       addSprite(x, abilityY, SpriteKeys.effects, EffectFrames.abilitySlot)
         .setDisplaySize(abilitySlotSize, abilitySlotSize)
-        .setAlpha(0.95);
-      addRect(x, abilityY, abilitySlotSize, abilitySlotSize, 0xffffff, 0)
-        .setStrokeStyle(2, 0x385b7a)
         .setAlpha(0.95);
       const iconSize = Math.max(abilitySlotSize - 12, abilitySlotSize * 0.65, 0);
       const iconFrame = abilityIconFrames[index % abilityIconFrames.length];
@@ -263,9 +244,6 @@ export class HUD extends Phaser.Scene {
         addSprite(slotX, slotY, SpriteKeys.effects, EffectFrames.inventorySlot)
           .setDisplaySize(64, 64)
           .setAlpha(0.92);
-        addRect(slotX, slotY, 64, 64, 0xffffff, 0)
-          .setStrokeStyle(2, 0x5a441e)
-          .setAlpha(0.9);
         const slot = addSprite(slotX, slotY, SpriteKeys.effects, EffectFrames.inventoryPlaceholder)
           .setDisplaySize(58, 58)
           .setAlpha(0.95);
