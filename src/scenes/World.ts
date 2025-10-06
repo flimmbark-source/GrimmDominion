@@ -57,9 +57,12 @@ export class World extends Phaser.Scene {
       y: this.iso.gridHeight / 2
     });
 
-    this.hero = this.add
-      .sprite(heroStart.x, heroStart.y, SpriteKeys.heroes, HeroFrames.goblinIdle)
-      as HeroSprite;
+    this.hero = this.add.sprite(
+      heroStart.x,
+      heroStart.y,
+      SpriteKeys.heroes,
+      HeroFrames.goblinIdle
+    ) as HeroSprite;
     this.hero.setOrigin(0.5, 0.9);
     this.physics.add.existing(this.hero);
     this.hero.speed = this.heroBaseSpeed;
