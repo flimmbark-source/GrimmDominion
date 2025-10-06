@@ -1,0 +1,75 @@
+{
+  "name": "North Plateau Skirmish",
+  "tileSize": { "width": 128, "height": 64 },
+  "width": 12,
+  "height": 12,
+  "tiles": [
+    ["void", "void", "cliff", "plateau", "plateau", "plateau", "plateau", "cliff", "void", "void", "void", "void"],
+    ["void", "cliff", "plateau", "plateau", "plateau", "plateau", "plateau", "plateau", "cliff", "void", "void", "void"],
+    ["cliff", "plateau", "plateau", "road", "road", "castle", "castle", "road", "plateau", "cliff", "void", "void"],
+    ["cliff", "plateau", "road", "road", "road", "gate", "castle", "road", "road", "plateau", "cliff", "void"],
+    ["forest", "road", "road", "village", "village", "road", "road", "road", "road", "road", "cliff", "void"],
+    ["forest", "forest", "road", "village", "village", "road", "road", "forest", "forest", "road", "road", "cliff"],
+    ["forest", "forest", "road", "road", "road", "road", "road", "forest", "forest", "road", "road", "cliff"],
+    ["forest", "forest", "road", "shrine", "shrine", "road", "road", "forest", "forest", "road", "road", "cliff"],
+    ["forest", "forest", "road", "shrine", "shrine", "road", "road", "forest", "forest", "road", "road", "cliff"],
+    ["forest", "forest", "road", "camp", "camp", "road", "road", "forest", "forest", "road", "road", "cliff"],
+    ["void", "forest", "road", "camp", "camp", "road", "road", "forest", "forest", "road", "cliff", "void"],
+    ["void", "void", "forest", "forest", "road", "road", "forest", "forest", "forest", "cliff", "void", "void"]
+  ],
+  "features": [
+    {
+      "type": "castle-gate",
+      "label": "Castle Gate",
+      "description": "Single destructible gate protecting the plateau stronghold.",
+      "tile": { "x": 5, "y": 3 }
+    },
+    {
+      "type": "haunted-village",
+      "label": "Haunted Village",
+      "description": "Villagers to rescue and valor caches for the Knight quests.",
+      "tile": { "x": 3, "y": 4 }
+    },
+    {
+      "type": "ancient-shrine",
+      "label": "Ancient Shrine",
+      "description": "Control point that feeds Evil Energy to the Witch's rituals.",
+      "tile": { "x": 3, "y": 7 }
+    },
+    {
+      "type": "shadowed-forest",
+      "label": "Shadowed Forest",
+      "description": "Dense cover ideal for Goblin ambushes and resource runs.",
+      "tile": { "x": 1, "y": 6 }
+    },
+    {
+      "type": "tavern-camp",
+      "label": "Forward Camp",
+      "description": "Tavern upgrades and regroup point for hero reinforcements.",
+      "tile": { "x": 4, "y": 9 }
+    }
+  ],
+  "heroSquads": [
+    {
+      "id": "knight-vanguard",
+      "label": "Knight Vanguard",
+      "tile": { "x": 4, "y": 10 },
+      "color": "#6aa3ff",
+      "speed": 2.7
+    },
+    {
+      "id": "witch-coven",
+      "label": "Witch Coven",
+      "tile": { "x": 6, "y": 10 },
+      "color": "#c176ff",
+      "speed": 2.4
+    },
+    {
+      "id": "goblin-saboteurs",
+      "label": "Goblin Saboteurs",
+      "tile": { "x": 3, "y": 9 },
+      "color": "#80d46b",
+      "speed": 3.1
+    }
+  ]
+}
