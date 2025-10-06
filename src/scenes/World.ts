@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { HUD } from '../ui/HUD';
 import type { Vec2, Stats } from '../types';
 import { addChest } from '../world/chest';
+import { addTavern } from '../world/tavern';
 import { Noise, emitFootsteps } from '../systems/noise';
 import { DarkLordAI } from '../ai/darkLord';
 import { stepDLUnits } from '../ai/search';
@@ -31,6 +32,7 @@ export class World extends Phaser.Scene {
   private noiseOff?: () => void;
   private _stepAccumulator = 0;
   private darkLord!: DarkLordAI;
+  private heroBaseSpeed = 3.5;
 
   constructor() {
     super('world');
@@ -60,7 +62,7 @@ export class World extends Phaser.Scene {
       as HeroSprite;
     this.hero.setOrigin(0.5, 0.9);
     this.physics.add.existing(this.hero);
-    this.hero.speed = 3.5;
+    this.hero.speed = this.heroBaseSpeed;
     this.hero.stats = {
       hp: 20,
       maxHp: 20,
@@ -119,6 +121,16 @@ export class World extends Phaser.Scene {
 
     addChest(this, 320, 140);
     addChest(this, 340, 180);
+    addTavern(this, 160, 320, (item) => {
+      if (this.hero.stats.gold >= item.cost) {
+        this.hero.stats.gold -= item.cost;
+        item.apply(this.hero.stats);
+        this.hero.speed = this.heroBaseSpeed * (this.hero.stats.speedMult ?? 1);
+        (this.game as any).setAlert(`Bought ${item.name}`);
+      } else {
+        (this.game as any).setAlert('Not enough gold');
+      }
+    });
 
     this.events.on('loot:gold', (gold: number) => {
       this.hero.stats.gold += gold;
