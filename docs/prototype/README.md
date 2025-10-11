@@ -14,3 +14,4 @@ This document organizes the scope required to build the Grimm Dominion vertical 
 - [Prototype File Creation Checklist](file_creation_checklist.md)
 - [Vertical Slice Blueprint](vertical_slice_blueprint.md)
 - [Project Bootstrapping Plan](project_bootstrap.md)
+- [Testing & Verification](testing/stage8_verification.md)
