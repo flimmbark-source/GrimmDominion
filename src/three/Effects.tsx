@@ -273,4 +273,5 @@ const Effects = (): JSX.Element => (
   </>
 );
 
+export { AnimatedFog, DayNightCycle, BiomeParticles, AmbientSound };
 export default Effects;
