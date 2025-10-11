@@ -15,6 +15,10 @@ export class HUD extends Phaser.Scene {
     this.layoutUI(gameSize);
   };
   private barFillWidth = 0;
+  private debugEnabled = false;
+  private debugText?: Phaser.GameObjects.Text;
+  private debugTimer?: Phaser.Time.TimerEvent;
+  private debugKey?: Phaser.Input.Keyboard.Key;
 
   private static readonly BAR_WIDTH = 120;
   private static readonly BAR_HEIGHT = 10;
@@ -33,8 +37,12 @@ export class HUD extends Phaser.Scene {
   create(): void {
     this.layoutUI(this.scale.gameSize);
     this.scale.on('resize', this.resizeHandler);
+    this.debugKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+    this.debugKey?.on('down', this.toggleDebugHUD);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off('resize', this.resizeHandler);
+      this.debugKey?.off('down', this.toggleDebugHUD);
+      this.debugTimer?.destroy();
     });
     this.cameras.main.setScroll(0, 0);
   }
@@ -268,6 +276,12 @@ export class HUD extends Phaser.Scene {
     const setAlert = (msg: string) => this.alert.setText(msg);
     (this.game as unknown as { setAlert?: (msg: string) => void }).setAlert = setAlert;
     (globalThis as { setAlert?: (msg: string) => void }).setAlert = setAlert;
+
+    if (this.debugEnabled) {
+      this.attachDebugOverlay(width);
+    } else {
+      this.debugText = undefined;
+    }
   }
 
   update(): void {
@@ -285,6 +299,80 @@ export class HUD extends Phaser.Scene {
       `Gold ${stats.gold}\nSPD ${this.world.hero.speed.toFixed(1)}\nMana ${stats.mana}/${stats.maxMana}`
     );
   }
+
+  private toggleDebugHUD = (): void => {
+    this.debugEnabled = !this.debugEnabled;
+
+    if (this.debugEnabled) {
+      this.debugTimer = this.time.addEvent({
+        delay: 250,
+        loop: true,
+        callback: this.updateDebugReadout
+      });
+      this.layoutUI(this.scale.gameSize);
+      this.updateDebugReadout();
+    } else {
+      this.debugTimer?.destroy();
+      this.debugTimer = undefined;
+      this.debugText?.destroy();
+      this.debugText = undefined;
+    }
+  };
+
+  private attachDebugOverlay(width: number): void {
+    if (!this.uiRoot) {
+      return;
+    }
+
+    const debugStyle: Phaser.Types.GameObjects.Text.TextStyle = {
+      fontSize: '12px',
+      color: '#f0f4ff',
+      backgroundColor: 'rgba(12, 16, 24, 0.68)',
+      padding: { x: 8, y: 6 }
+    };
+
+    this.debugText = this.add
+      .text(width - 20, 20, '', debugStyle)
+      .setOrigin(1, 0)
+      .setDepth(1000)
+      .setAlpha(0.95);
+    this.uiRoot.add(this.debugText);
+  }
+
+  private updateDebugReadout = (): void => {
+    if (!this.debugEnabled || !this.debugText) {
+      return;
+    }
+
+    const loop = this.game.loop;
+    const renderer = this.game.renderer as any;
+    const drawCallsCandidate =
+      renderer?.info?.drawCalls ??
+      renderer?.info?.render?.calls ??
+      renderer?.info?.render?.total ??
+      renderer?.info?.total ??
+      renderer?.info?.draw ??
+      undefined;
+    const drawCalls =
+      typeof drawCallsCandidate === 'number' ? drawCallsCandidate.toString() : 'n/a';
+
+    const displayObjects = this.world.children.list.length;
+    const hero = this.world.hero;
+    const heroTarget = hero.target
+      ? `${hero.target.x.toFixed(0)}, ${hero.target.y.toFixed(0)}`
+      : 'None';
+
+    const lines = [
+      `FPS: ${loop.actualFps.toFixed(1)}`,
+      `Frame: ${loop.delta.toFixed(1)} ms`,
+      `Draw Calls: ${drawCalls}`,
+      `Display Objects: ${displayObjects}`,
+      `Hero: ${hero.x.toFixed(1)}, ${hero.y.toFixed(1)}`,
+      `Target: ${heroTarget}`
+    ];
+
+    this.debugText.setText(lines);
+  };
 
   private lerpBar(current: number, target: number): number {
     const lerped = Phaser.Math.Linear(current, target, HUD.BAR_LERP);
