@@ -24,6 +24,7 @@ export type NormalizedPosition = { x: number; y: number };
 
 export type HeroMoveEventDetail = {
   normalized: NormalizedPosition;
+  world: { x: number; z: number };
 };
 
 declare global {

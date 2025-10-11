@@ -62,7 +62,8 @@ export class World extends Phaser.Scene {
   private _objective!: { goal: number };
   private heroBaseSpeed = 3.5;
   private onHeroMove = (event: WindowEventMap['hero-move']) => {
-    const normalized = event.detail?.normalized;
+    const detail = event.detail;
+    const normalized = detail?.normalized;
     if (!normalized) {
       return;
     }
@@ -73,6 +74,15 @@ export class World extends Phaser.Scene {
       x: clampedX * (this.iso.gridWidth - 0.0001),
       y: clampedY * (this.iso.gridHeight - 0.0001)
     };
+
+    if (detail?.world) {
+      console.debug('[World] hero-move', {
+        world: detail.world,
+        normalized: { x: clampedX, y: clampedY },
+        cart
+      });
+    }
+
     const target = this.cartToScreen(cart);
     this.setHeroTarget(target);
   };
