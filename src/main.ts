@@ -1,24 +1,25 @@
 import Phaser from 'phaser';
-import { Boot } from './scenes/Boot';
-import { World } from './scenes/World';
-import { HUD } from './ui/HUD';
+import BootScene from './scenes/BootScene';
+import GameScene from './scenes/GameScene';
+import UIScene from ./scenes/UIScene';
 
-const game = new Phaser.Game({
+const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'app',
   backgroundColor: '#0f0f13',
-  physics: { default: 'arcade', arcade: { debug: false } },
-  scale: {
-    mode: Phaser.Scale.RESIZE,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: window.innerWidth,
-    height: window.innerHeight
+  width: 800,
+  height: 600,
+  physics: {
+    default: 'arcade',
+    arcade: {
+      gravity: { y: 0 },
+      debug: false,
+    },
   },
-  scene: [Boot, World, HUD]
-});
+  scene: [BootScene, GameScene, UIScene],
+};
 
-window.addEventListener('resize', () => {
-  game.scale.resize(window.innerWidth, window.innerHeight);
-});
+const game = new Phaser.Game(config);
 
+// Expose game for debug purposes
 (window as any).game = game;
