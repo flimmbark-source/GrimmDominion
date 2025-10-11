@@ -17,7 +17,7 @@ type TerrainProps = {
   onSurfaceClick?: (point: Vector3) => void;
 };
 
-const TERRAIN_SIZE = 199;
+export const TERRAIN_SIZE = 199;
 const TERRAIN_SEGMENTS = 198;
 const NOISE_SCALE = 40;
 const HEIGHT_AMPLITUDE = 8;
@@ -25,6 +25,7 @@ const HEIGHT_AMPLITUDE = 8;
 const Terrain = ({ onSurfaceClick }: TerrainProps): JSX.Element => {
   const meshRef = useRef<Mesh>(null);
   const { camera, gl } = useThree();
+  const activePointersRef = useRef(new Set<number>());
 
   const noise = useMemo(() => new SimplexNoise(), []);
 
@@ -104,9 +105,48 @@ const Terrain = ({ onSurfaceClick }: TerrainProps): JSX.Element => {
 
   useEffect(() => {
     const domElement = gl.domElement;
+    const activePointers = activePointersRef.current;
+
+    const forwardPointerEvent = (type: "pointerdown" | "pointerup", event: PointerEvent) => {
+      const phaserCanvas = document.querySelector<HTMLCanvasElement>("#phaser-root canvas");
+      if (!phaserCanvas) {
+        return false;
+      }
+
+      const forwardedEvent = new PointerEvent(type, {
+        pointerId: event.pointerId,
+        bubbles: true,
+        cancelable: true,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        button: event.button,
+        buttons: event.buttons,
+        ctrlKey: event.ctrlKey,
+        shiftKey: event.shiftKey,
+        altKey: event.altKey,
+        metaKey: event.metaKey,
+        pointerType: event.pointerType,
+        pressure: event.pressure,
+        tangentialPressure: event.tangentialPressure,
+        tiltX: event.tiltX,
+        tiltY: event.tiltY,
+        twist: event.twist,
+        width: event.width,
+        height: event.height,
+        isPrimary: event.isPrimary,
+      });
+
+      phaserCanvas.dispatchEvent(forwardedEvent);
+      return true;
+    };
 
     const handlePointerDown = (event: PointerEvent): void => {
-      if (!meshRef.current) {
+      const forwarded = forwardPointerEvent("pointerdown", event);
+      if (forwarded) {
+        activePointers.add(event.pointerId);
+      }
+
+      if (!meshRef.current || event.button !== 0) {
         return;
       }
 
@@ -122,10 +162,21 @@ const Terrain = ({ onSurfaceClick }: TerrainProps): JSX.Element => {
       }
     };
 
+    const handlePointerUp = (event: PointerEvent): void => {
+      if (!activePointers.has(event.pointerId)) {
+        return;
+      }
+
+      activePointers.delete(event.pointerId);
+      forwardPointerEvent("pointerup", event);
+    };
+
     domElement.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("pointerup", handlePointerUp);
 
     return () => {
       domElement.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("pointerup", handlePointerUp);
     };
   }, [camera, gl, onSurfaceClick, pointer, raycaster]);
 

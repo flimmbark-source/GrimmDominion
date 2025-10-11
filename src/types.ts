@@ -19,3 +19,15 @@ export interface Stats {
   atk?: number;
   speedMult?: number;
 }
+
+export type NormalizedPosition = { x: number; y: number };
+
+export type HeroMoveEventDetail = {
+  normalized: NormalizedPosition;
+};
+
+declare global {
+  interface WindowEventMap {
+    'hero-move': CustomEvent<HeroMoveEventDetail>;
+  }
+}

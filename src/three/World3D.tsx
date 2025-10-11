@@ -2,9 +2,10 @@ import { useCallback, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { Vector3 } from "three";
-import Terrain from "./Terrain";
+import Terrain, { TERRAIN_SIZE } from "./Terrain";
 import Player3D from "./Player3D";
 import { AnimatedFog, DayNightCycle, BiomeParticles, AmbientSound } from "./Effects";
+import type { HeroMoveEventDetail } from "../types";
 
 const CAMERA_POSITION: [number, number, number] = [60, 80, 60];
 const BIOME_PARTICLE_INSTANCES = 3;
@@ -14,6 +15,15 @@ const World3D = (): JSX.Element => {
 
   const handleSurfaceClick = useCallback((point: Vector3) => {
     setTarget(point);
+
+    const clamp = (value: number) => Math.min(Math.max(value, 0), 1);
+    const normalizedX = clamp((point.x + TERRAIN_SIZE / 2) / TERRAIN_SIZE);
+    const normalizedY = clamp((point.z + TERRAIN_SIZE / 2) / TERRAIN_SIZE);
+    const detail: HeroMoveEventDetail = {
+      normalized: { x: normalizedX, y: normalizedY }
+    };
+
+    window.dispatchEvent(new CustomEvent<HeroMoveEventDetail>("hero-move", { detail }));
   }, []);
 
   return (

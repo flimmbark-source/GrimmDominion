@@ -61,6 +61,21 @@ export class World extends Phaser.Scene {
   private layer!: Phaser.Tilemaps.TilemapLayer;
   private _objective!: { goal: number };
   private heroBaseSpeed = 3.5;
+  private onHeroMove = (event: WindowEventMap['hero-move']) => {
+    const normalized = event.detail?.normalized;
+    if (!normalized) {
+      return;
+    }
+
+    const clampedX = Phaser.Math.Clamp(normalized.x, 0, 1);
+    const clampedY = Phaser.Math.Clamp(normalized.y, 0, 1);
+    const cart = {
+      x: clampedX * (this.iso.gridWidth - 0.0001),
+      y: clampedY * (this.iso.gridHeight - 0.0001)
+    };
+    const target = this.cartToScreen(cart);
+    this.setHeroTarget(target);
+  };
 
   constructor() {
     super('world');
@@ -125,8 +140,7 @@ export class World extends Phaser.Scene {
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (p.rightButtonDown()) {
-        this.hero.target = undefined;
-        this.marker.setVisible(false);
+        this.setHeroTarget(undefined);
         return;
       }
 
@@ -136,11 +150,12 @@ export class World extends Phaser.Scene {
       }
 
       const target = this.cartToScreen(targetCart);
-      this.hero.target = target;
-      this.marker.setPosition(target.x, target.y).setDepth(target.y + 1).setVisible(true);
+      this.setHeroTarget(target);
     });
 
     this.scene.launch('hud', { world: this });
+
+    window.addEventListener('hero-move', this.onHeroMove);
 
     this.populateProps();
 
@@ -205,6 +220,7 @@ export class World extends Phaser.Scene {
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.noiseOff?.();
+      window.removeEventListener('hero-move', this.onHeroMove);
     });
   }
 
@@ -263,6 +279,20 @@ export class World extends Phaser.Scene {
     }
 
     applyTerrainStealth(this.hero, (p) => terrainAt.call(this, p));
+  }
+
+  private setHeroTarget(target: Vec2 | undefined): void {
+    if (!target) {
+      this.hero.target = undefined;
+      this.marker.setVisible(false);
+      return;
+    }
+
+    this.hero.target = target;
+    this.marker
+      .setPosition(target.x, target.y)
+      .setDepth(target.y + 1)
+      .setVisible(true);
   }
 
   private buildIsometricGround(): Phaser.Geom.Rectangle {
