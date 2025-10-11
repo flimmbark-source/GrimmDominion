@@ -17,6 +17,9 @@ const MOON_COLOR = new Color(0x6aa1ff);
 const AMBIENT_DAY_COLOR = new Color(0xf0f6ff);
 const AMBIENT_NIGHT_COLOR = new Color(0x1a1f26);
 
+const FOG_DENSITY_RANGE: [number, number] = [0.003, 0.012];
+const LIGHT_UPDATE_INTERVAL = 0.05;
+
 const AnimatedFog = (): null => {
   const { scene } = useThree();
   const fogRef = useRef<FogExp2 | null>(null);
@@ -25,7 +28,7 @@ const AnimatedFog = (): null => {
   useEffect(() => {
     const previousFog = scene.fog;
     const previousBackground = scene.background;
-    const fog = new FogExp2(FOG_NIGHT_COLOR.clone(), 0.01);
+    const fog = new FogExp2(FOG_NIGHT_COLOR.clone(), FOG_DENSITY_RANGE[0] * 1.5);
     fogRef.current = fog;
     scene.fog = fog;
     scene.background = fog.color;
@@ -44,7 +47,7 @@ const AnimatedFog = (): null => {
 
     timeRef.current += delta;
     const cycle = (Math.sin(timeRef.current * 0.1) + 1) / 2;
-    fogRef.current.density = MathUtils.lerp(0.006, 0.02, cycle);
+    fogRef.current.density = MathUtils.lerp(FOG_DENSITY_RANGE[0], FOG_DENSITY_RANGE[1], cycle);
     fogRef.current.color.lerpColors(FOG_NIGHT_COLOR, FOG_DAY_COLOR, cycle);
   });
 
@@ -55,11 +58,19 @@ const DayNightCycle = (): JSX.Element => {
   const directionalLightRef = useRef<DirectionalLight>(null);
   const ambientLightRef = useRef<AmbientLight>(null);
   const timeRef = useRef(0);
+  const accumulatorRef = useRef(0);
   const sunColorBuffer = useMemo(() => new Color(), []);
   const ambientColorBuffer = useMemo(() => new Color(), []);
 
   useFrame((_, delta) => {
     timeRef.current += delta * 0.1;
+    accumulatorRef.current += delta;
+
+    if (accumulatorRef.current < LIGHT_UPDATE_INTERVAL) {
+      return;
+    }
+
+    accumulatorRef.current = 0;
     const angle = timeRef.current % (Math.PI * 2);
     const daylight = (Math.sin(angle) + 1) / 2;
 
@@ -93,7 +104,7 @@ const DayNightCycle = (): JSX.Element => {
         ref={directionalLightRef}
         intensity={0.8}
         position={[30, 30, 30]}
-        castShadow
+        castShadow={false}
       />
     </>
   );
@@ -114,7 +125,7 @@ type ParticleVariant = {
 const PARTICLE_VARIANTS: ParticleVariant[] = [
   {
     key: "forest-fireflies",
-    count: 140,
+    count: 80,
     spread: [40, 12, 40],
     position: [0, 6, 0],
     color: new Color(0xfff7a1),
@@ -125,7 +136,7 @@ const PARTICLE_VARIANTS: ParticleVariant[] = [
   },
   {
     key: "swamp-mist",
-    count: 180,
+    count: 110,
     spread: [50, 5, 50],
     position: [0, 2, 0],
     color: new Color(0xa2ffdd),
@@ -136,7 +147,7 @@ const PARTICLE_VARIANTS: ParticleVariant[] = [
   },
   {
     key: "hill-dust",
-    count: 120,
+    count: 90,
     spread: [60, 8, 60],
     position: [0, 3, 0],
     color: new Color(0xf0d7a6),
@@ -196,7 +207,7 @@ const BiomeParticles = (): JSX.Element => {
   return (
     <group ref={groupRef}>
       {PARTICLE_VARIANTS.map((variant, index) => (
-        <points key={variant.key} position={variant.position} frustumCulled={false}>
+        <points key={variant.key} position={variant.position} frustumCulled>
           <bufferGeometry>
             <bufferAttribute
               attach="attributes-position"

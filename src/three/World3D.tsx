@@ -8,7 +8,7 @@ import { AnimatedFog, DayNightCycle, BiomeParticles, AmbientSound } from "./Effe
 import type { HeroMoveEventDetail } from "../types";
 
 const CAMERA_POSITION: [number, number, number] = [60, 80, 60];
-const BIOME_PARTICLE_INSTANCES = 3;
+const BIOME_PARTICLE_INSTANCES = 2;
 
 const World3D = (): JSX.Element => {
   const [target, setTarget] = useState<Vector3 | null>(null);
