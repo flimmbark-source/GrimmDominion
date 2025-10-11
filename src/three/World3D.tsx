@@ -17,10 +17,12 @@ const World3D = (): JSX.Element => {
     setTarget(point);
 
     const clamp = (value: number) => Math.min(Math.max(value, 0), 1);
-    const normalizedX = clamp((point.x + TERRAIN_SIZE / 2) / TERRAIN_SIZE);
-    const normalizedY = clamp((point.z + TERRAIN_SIZE / 2) / TERRAIN_SIZE);
+    const terrainSpan = TERRAIN_SIZE;
+    const normalizedX = clamp(0.5 + (point.x - point.z) / (2 * terrainSpan));
+    const normalizedY = clamp(0.5 + (point.x + point.z) / (2 * terrainSpan));
     const detail: HeroMoveEventDetail = {
-      normalized: { x: normalizedX, y: normalizedY }
+      normalized: { x: normalizedX, y: normalizedY },
+      world: { x: point.x, z: point.z }
     };
 
     window.dispatchEvent(new CustomEvent<HeroMoveEventDetail>("hero-move", { detail }));
